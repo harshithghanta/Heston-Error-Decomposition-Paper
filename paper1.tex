@@ -1,0 +1,276 @@
+\documentclass[11pt]{article}
+
+
+\title{Where Does the Hedging Error Go? A Greek-by-Greek Decomposition for 0DTE Options under Heston}
+\author{Harshith Ghanta}
+\date{\today}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+Zero Days to Expiration (0DTE) options have become increasingly popular among traders due to their high leverage and potential for quick profits. 
+However, the rapid time decay and sensitivity to market movements make them particularly susceptible to hedging errors. 
+This paper presents a Greek-by-Greek decomposition of the hedging error for 0DTE options under the Heston stochastic volatility model. 
+By analyzing the contributions of Gamma, Vega, Charm, and various other Greeks to the overall hedging error, we provide insights into the 
+sources of risk and potential strategies for mitigating these errors. Our findings suggest that  Gamma and Vega are the primary contributors to hedging error. 
+\end{abstract}
+
+\newpage
+\section{Introduction}
+This paper investigates the Greeks as sources of discrete hedging error for 0DTE options under Heston. 
+
+\subsection{Black--Scholes Model and Greeks}
+The Black--Scholes model, introduced by Fishcer Black and Myron Scholes (1973) and Robert Merton (1973), 
+provides a framework for pricing European options in a closed form that Heston builds off of. The issue with Black-Scholes 
+is that it assumes constant volatility, which is not the case in real markets, especially for 0DTE options. The Heston
+model, explained below, allows for stochastic volatility, which is more realistic to model the market. Black Scholes also introduced the concept of Greeks, which are 
+sensitivities of the option price to various parameters. They are listed below:
+\begin{itemize}
+    \item Delta ($\Delta$): Sensitivity of the option price to changes in the underlying asset price.
+    \item Gamma ($\Gamma$): Sensitivity of Delta to changes in  the underlying asset price.
+    \item Vega ($\nu$): Sensitivity of the option price to changes in volatility.
+    \item Theta ($\Theta$): Sensitivity of the option price to the passage of time.
+    \item Rho ($\rho$): Sensitivity of the option price to changes  
+    \item  Charm ($\frac{\partial \Delta}{\partial t}$): Sensitivity of Delta to the passage of time.
+    \item Vanna ($\frac{\partial \Delta}{\partial \sigma}$): Sensitivity of Delta to changes in volatility.
+    \item Vomma ($\frac{\partial \nu}{\partial \sigma}$): Sensitivity of Vega to changes in volatility.
+    \item Speed ($\frac{\partial \Gamma}{\partial S}$): Sensitivity of Gamma to changes in the underlying asset price.
+    \item Zomma ($\frac{\partial \Gamma}{\partial \sigma}$): Sensitivity of Gamma to changes in volatility.
+    \item Color ($\frac{\partial \Gamma}{\partial t}$): Sensitivity of Gamma to the passage of time.
+\end{itemize}
+
+As Greeks increase in order, they become increasingly difficult to hedge and are more sensitive to market movements. 
+
+\section{The Heston Model}
+The Heston model is a stochastic volatility model that extends the Black-Scholes framework by allowing the volatility of the underlying asset to follow its own stochastic process. 
+This model is particularly useful for capturing the observed market phenomena such as volatility clustering. The derivation is as follows:
+
+\[
+dS = \mu S\,dt + \sqrt{v}\,S\,dX,
+\qquad
+dv = \kappa(\eta - v)\,dt + \epsilon \sqrt{v}\,dW,
+\qquad
+dX\,dW = \rho\,dt,
+\]
+\[
+\Pi = V - \Delta S - \Delta_1 V_1 .
+\]
+\[
+dV = \left( \frac{\partial V}{\partial t}
++ \frac{1}{2} v S^2 \frac{\partial^2 V}{\partial S^2}
++ \rho \epsilon v S \frac{\partial^2 V}{\partial S\,\partial v}
++ \frac{1}{2} \epsilon^2 v \frac{\partial^2 V}{\partial v^2} \right) dt
++ \frac{\partial V}{\partial S}\,dS
++ \frac{\partial V}{\partial v}\,dv,
+\]
+\[
+d\Pi = \left( \frac{\partial V}{\partial t}
++ \frac{1}{2} v S^2 \frac{\partial^2 V}{\partial S^2}
++ \rho \epsilon v S \frac{\partial^2 V}{\partial S\,\partial v}
++ \frac{1}{2} \epsilon^2 v \frac{\partial^2 V}{\partial v^2} \right) dt
+\]
+\[
+{} - \Delta_1 \left( \frac{\partial V_1}{\partial t}
++ \frac{1}{2} v S^2 \frac{\partial^2 V_1}{\partial S^2}
++ \rho \epsilon v S \frac{\partial^2 V_1}{\partial S\,\partial v}
++ \frac{1}{2} \epsilon^2 v \frac{\partial^2 V_1}{\partial v^2} \right) dt
+\]
+\[
+{} + \left( \frac{\partial V}{\partial S} - \Delta_1 \frac{\partial V_1}{\partial S} - \Delta \right) dS
++ \left( \frac{\partial V}{\partial v} - \Delta_1 \frac{\partial V_1}{\partial v} \right) dv.
+\]
+\[
+\Delta_1 = \frac{\partial V/\partial v}{\partial V_1/\partial v},
+\qquad
+\Delta = \frac{\partial V}{\partial S} - \Delta_1 \frac{\partial V_1}{\partial S},
+\]
+\[
+\frac{1}{\partial V/\partial v} \biggl(
+\frac{\partial V}{\partial t}
++ \frac{1}{2} v S^2 \frac{\partial^2 V}{\partial S^2}
++ \rho \epsilon v S \frac{\partial^2 V}{\partial S\,\partial v}
+\]
+\[
+{} + \frac{1}{2} \epsilon^2 v \frac{\partial^2 V}{\partial v^2}
++ rS \frac{\partial V}{\partial S}
+- rV \biggr) = -\nu_{\mathrm{Q}},
+\]
+\[
+\nu_{\mathrm{Q}} \equiv \kappa(\eta - v) - \lambda v
+\]
+\[
+\frac{\partial V}{\partial t}
++ \frac{1}{2} v S^2 \frac{\partial^2 V}{\partial S^2}
++ \rho \epsilon v S \frac{\partial^2 V}{\partial S\,\partial v}
++ \frac{1}{2} \epsilon^2 v \frac{\partial^2 V}{\partial v^2}
+\]
+\[
+{} + rS \frac{\partial V}{\partial S}
++ \big[\kappa(\eta - v) - \lambda v\big] \frac{\partial V}{\partial v}
+- rV = 0.
+\]
+
+\section{The Error Model}
+\subsection{Motivation}
+The Error model is derived from the Heston model, but where they diverge is regarding the continuous limit. 
+The Heston model assumes continuous hedging, therefore, $\Delta t \to 0$. However, in practice, hedging is done at discrete intervals,
+ which introduces hedging error. To decompose said error, the following model is proposed:
+\subsection{Derivation}
+\[
+\Delta\Pi = \Delta V - \frac{\partial V}{\partial S}\,\Delta S
+- r\,\Big( V - \frac{\partial V}{\partial S}\,S \Big)\,\Delta t .
+\]
+\[
+\Delta\Pi = \frac{\partial V}{\partial t}\,\Delta t
++ \frac{\partial V}{\partial S}\,\Delta S
++ \frac{\partial V}{\partial v}\,\Delta v
+\]
+\[
+{} + \frac{1}{2} \frac{\partial^2 V}{\partial S^2}\,(\Delta S)^2
++ \frac{1}{2} \frac{\partial^2 V}{\partial v^2}\,(\Delta v)^2
++ \frac{\partial^2 V}{\partial S\,\partial v}\,\Delta S\,\Delta v
+\]
+\[
+{} + \frac{\partial^2 V}{\partial S\,\partial t}\,\Delta S\,\Delta t
++ \frac{\partial^2 V}{\partial v\,\partial t}\,\Delta v\,\Delta t
++ \frac{1}{2} \frac{\partial^2 V}{\partial t^2}\,(\Delta t)^2
+\]
+\[
+{} - \frac{\partial V}{\partial S}\,\Delta S
+- r\,\Big( V - \frac{\partial V}{\partial S}\,S \Big)\,\Delta t .
+\]
+\[
+\frac{\partial V}{\partial t} = rV - rS\,\frac{\partial V}{\partial S}
+- \frac{1}{2} v S^2\,\frac{\partial^2 V}{\partial S^2}
+- \rho \epsilon v S\,\frac{\partial^2 V}{\partial S\,\partial v}
+- \frac{1}{2} \epsilon^2 v\,\frac{\partial^2 V}{\partial v^2}
+- \nu_{\mathrm{Q}}\,\frac{\partial V}{\partial v} ,
+\]
+\[
+\Delta\Pi = \frac{1}{2} \frac{\partial^2 V}{\partial S^2}\big[ (\Delta S)^2 - v S^2\,\Delta t \big]
++ \frac{1}{2} \frac{\partial^2 V}{\partial v^2}\big[ (\Delta v)^2 - \epsilon^2 v\,\Delta t \big]
+\]
+\[
+{} + \frac{\partial^2 V}{\partial S\,\partial v}\big[ \Delta S\,\Delta v - \rho \epsilon v S\,\Delta t \big]
++ \frac{\partial V}{\partial v}\big[ \Delta v - \nu_{\mathrm{Q}}\,\Delta t \big]
+\]
+\[
+{} + \frac{\partial^2 V}{\partial S\,\partial t}\,\Delta S\,\Delta t
++ \frac{\partial^2 V}{\partial v\,\partial t}\,\Delta v\,\Delta t
++ \frac{1}{2} \frac{\partial^2 V}{\partial t^2}\,(\Delta t)^2 .
+\]
+
+\newpage
+\subsection{Methodology}
+The values of the Heston parameters are rough estimates, as better data was not available for use. Given that information, the results in the 
+next section are not to be taken as absolute, but rather as a proof of concept. The parameters used are as follows:
+\begin{itemize}
+    \item $\kappa = 3.0$ (rate of mean reversion)
+    \item $\eta \approx 0.035$ (long-run variance, set to the average realized variance in the sample)
+    \item $\epsilon = 0.5$ (volatility of volatility)
+    \item $\rho = -0.7$ (correlation between asset and variance)
+    \item $\lambda = 0$ (market price of volatility risk)
+\end{itemize}
+
+The volatility-risk premium $\lambda$ is set to zero because it cannot be identified from the underlying price alone: pinning it down requires calibrating to a cross-section of option prices, which the available data does not support. And since $\kappa$ and $\eta$ are treated here as risk-neutral quantities rather than estimates under the physical measure, the $-\lambda v$ term is redundant in any case---any nonzero premium can be folded into an adjusted mean-reversion speed and long-run level---so fixing $\lambda = 0$ costs no generality.
+
+SPX data was used as a proxy for the underlying asset, and the Heston parameters were estimated using historical data.
+The option prices were computed using the Heston model, and the hedging error was calculated by simulating discrete hedging
+at various time intervals. The contributions of each Greek to the overall hedging error were then analyzed and their results are found
+in the following section.
+
+In terms of the derivation itself, the specific terms above were chosen to allow
+for all the terms to be expressed as greeks, and have a discrete and nondiscrete component. The discrete component is the difference between the actual change 
+in the underlying asset and the expected change, while the nondiscrete component is the expected change itself. The discrete component is what contributes to the 
+hedging error, while the nondiscrete component is what is expected to be hedged away. If the limit is taken, then the model collapses back to the Heston model, as
+the discrete component goes to zero.
+
+
+\subsection{Results and Testing}
+The decomposition was tested on 56 full trading days of five-minute data (78 bars per day, so 77 hedge intervals). Each day is rescaled to open at 1, the variance path is read off the squared VIX, and the option is a fresh at-the-money 0DTE call re-formed each morning and delta-hedged at every bar. Summing the seven compensated terms reproduces the realized hedged P\&L to within a $9\%$ leftover, with a mean daily hedged P\&L of $-0.00235$ (in the units where the underlying opens at 1) and a standard deviation of $0.00122$.
+
+Table~\ref{tab:attribution} attributes that error term by term, reporting each term's share of the total average absolute daily contribution---first over all days, then split into three regimes by how far the VIX travelled intraday.
+
+\begin{table}[h]
+\centering
+\begin{tabular}{lrrrr}
+\hline
+Term & Overall & Calm & Mid & Turbulent \\
+\hline
+Gamma $\left(\frac{1}{2}\,\partial^2 V/\partial S^2\right)$          & 89.74 & 93.55 & 91.54 & 82.11 \\
+Vega $\left(\partial V/\partial v\right)$                            &  4.79 &  1.25 &  3.53 & 11.33 \\
+Vanna $\left(\partial^2 V/\partial S\,\partial v\right)$             &  2.35 &  2.19 &  2.00 &  3.01 \\
+Charm $\left(\partial^2 V/\partial S\,\partial t\right)$             &  1.50 &  1.53 &  1.33 &  1.70 \\
+Time convexity $\left(\frac{1}{2}\,\partial^2 V/\partial t^2\right)$ &  1.27 &  1.16 &  1.29 &  1.39 \\
+Volga $\left(\frac{1}{2}\,\partial^2 V/\partial v^2\right)$          &  0.25 &  0.27 &  0.23 &  0.23 \\
+Veta $\left(\partial^2 V/\partial v\,\partial t\right)$              &  0.11 &  0.04 &  0.08 &  0.23 \\
+\hline
+\end{tabular}
+\caption{Share of the daily hedged P\&L carried by each decomposition term, as a percentage of the total average absolute daily contribution. Days are sorted into terciles by the absolute intraday change in the VIX: calm ($n=19$, $\langle |\Delta\mathrm{VIX}| \rangle = 0.12$), mid ($n=18$, $0.47$), and turbulent ($n=19$, $1.57$).}
+\label{tab:attribution}
+\end{table}
+
+Gamma dominates in every regime, as one would expect of an option hedged only in the underlying: on a typical day roughly nine-tenths of the hedging error is the $\frac{1}{2}\,\partial^2 V/\partial S^2$ term. What shifts with the regime is where the remaining tenth comes from. On calm days Gamma carries $94\%$ and Vega barely $1\%$; on turbulent days Gamma's share falls to $82\%$ while Vega climbs to $11\%$, absorbing almost all of the share Gamma gives up. The volatility-driven error is essentially dormant when the VIX sits still and becomes the second-order story precisely when it does not. Everything else---Vanna, Charm, time convexity, Volga, and Veta---stays within a few percent throughout, confirming that for 0DTE the hedging error lives overwhelmingly in Gamma, with Vega as the regime-dependent runner-up.
+
+\subsection{Limitations and Future Work}
+The model is limited by the accuracy of the Heston parameters, an issue one can easily fix with better data. Another limitation is found in the premise itself:
+all greeks are unhedgable in the terminal interval, because they are the greatest, and there exists no next step to hedge. Given that, firms, market makers, retail traders and any of the like should be 
+wary in their usage of 0DTE options, as they are inherently risky and difficult to hedge, especially as they near expieration. This paper simply explores the sources of where the hedging error goes, and does not provide a definitive solution to the problem.
+The subsequent planned paper explores Gamma and Vega hedging strategies, and their implications. 
+
+
+\section{Conclusion}
+The Greek-by-Greek decomposition of the hedging error for 0DTE options under the Heston model reveals 
+that Gamma and Vega are the primary contributors to hedging error, with Gamma dominating in all market regimes and 
+Vega becoming more significant during periods of high volatility. The findings highlight the challenges of hedging 0DTE
+options and underscore the importance of understanding the sources of risk associated with these instruments. 
+
+\appendix
+\section{Glossary of Variables}
+
+\begin{thebibliography}{9}
+
+\bibitem{blackscholes1973}
+Black, F. and Scholes, M. (1973).
+\textit{The Pricing of Options and Corporate Liabilities.}
+Journal of Political Economy, 81(3), 637--654.
+
+\bibitem{merton1973}
+Merton, R. C. (1973).
+\textit{Theory of Rational Option Pricing.}
+The Bell Journal of Economics and Management Science, 4(1), 141--183.
+
+\bibitem{heston1993}
+Heston, S. L. (1993).
+\textit{A Closed-Form Solution for Options with Stochastic Volatility with Applications to Bond and Currency Options.}
+The Review of Financial Studies, 6(2), 327--343.
+
+\bibitem{hull2018}
+Hull, J. C. (2018).
+\textit{Options, Futures, and Other Derivatives.}
+10th ed. Pearson, Harlow.
+
+\bibitem{gatheral2006}
+Gatheral, J. (2006).
+\textit{The Volatility Surface: A Practitioner's Guide.}
+Wiley, Hoboken, NJ.
+
+\bibitem{oksendal2003}
+{\O}ksendal, B. (2003).
+\textit{Stochastic Differential Equations: An Introduction with Applications.}
+6th ed. Springer, Berlin.
+
+\bibitem{taleb1997}
+Taleb, N. N. (1997).
+\textit{Dynamic Hedging: Managing Vanilla and Exotic Options.}
+Wiley, New York.
+
+\bibitem{cboe2025}
+Cboe Global Markets (2026).
+\textit{The State of the Options Industry: 2025.}
+Cboe Insights. Available at: \texttt{cboe.com/insights}.
+
+\end{thebibliography}
+
+\end{document}
