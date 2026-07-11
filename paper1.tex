@@ -24,7 +24,7 @@ at-the-money 0DTE calls, hedged at five-minute frequency on real SPX data. The c
 error actually goes, and how that attribution shifts with the volatility regime. The headline is that Gamma carries the error in every regime, but the
  balance between Gamma and Vega swings from roughly $94/1$ on the calmest days to $82/11$ on the most turbulent. 
 
-\subsection{Black--Scholes Model and Greeks}\label{subsec:greeks}
+\subsection{Black--Scholes Model and Greeks}
 The Black--Scholes model, introduced by Fischer Black and Myron Scholes (1973) and Robert Merton (1973),
 provides a framework for pricing European options in a closed form that Heston builds off of. The issue with Black--Scholes
 is that it assumes constant volatility, which is not the case in real markets, especially for 0DTE options. The Heston
@@ -48,17 +48,17 @@ As Greeks increase in order, they become increasingly difficult to hedge and are
 \section{Background}
 \subsection{Related Literature}
 The decomposition in this paper relies heavily on a variety of prior work. Firstly, the Heston model \cite{heston1993} 
-is used as the underlying model for the option pricing and hedging found later in the paper. Along with that, Euler--Maruyama \cite{Maruyama1955} is used to simulate the stochastic differential 
-equations used in the implementation of the paper. Along with that, Milstein was also used in tandem with Euler--Maruyama for variance specifically \cite{Milstein1975}. The compensated-Greek decomposition is based on Bergomi's work \cite{bergomi2016}, which is used to decompose the hedging error into its
+is used as the underlying model for the option pricing and hedging found later in the paper. Along with that, Euler-Maruyama \cite{Maruyama1995} is used to simulate the stochastic differential 
+equations used in the implementation of the paper. Along with that, Milstein was also used in tandem with Euler-Maruyama for variance specifically \cite{Milstein1975}. The compensated-Greek decomposition is based on Bergomi's work \cite{bergomi2016}, which is used to decompose the hedging error into its
 various components. When first using the compensated-Greek decomposition, it was found that an abnormal amount of hedging error was being attributed to the Gamme term, which was due to the 
 fact that the decomposition was not accounting for jumps. With the inclusion of jumps, the decomposition loses the abnormal gamma values, and neatly
 arranges itself as gamma and jumps \cite{bozovic2025}.
 
 
 \subsection{Choices and Rationale}
-Firstly, the Heston Model was chosen for its stochastic volatility, which other models lack. Also, the Heston parameters chosen
+Firsly, the Heston Model was chosen for its stochastic volatility, which other models lack. Also, the Heston parameters chosen
 are round, plausible values (see the Methodology section for further information). Their specific combination violates the Feller Condition, 
-which is why Milstein's simulation wins over Euler--Maruyama's, and is used for variance alone. Euler--Maruyama is the standard in practice, and 
+which is why Milstein's simulation wins over Euler-Maruyama's, and is used for variance alone. Euler-Maruyama is the standard in practice, and 
 is used elsewhere in the paper. 
 
 
@@ -212,7 +212,7 @@ computational efficiency. If using a stronger computer, the number of points can
 it has been found that if $\lambda$ is set to 0, then the results are not sensitive to the number of points in the grid, as the integrals converge quickly. 
 However, if $\lambda$ is nonzero, then the results can be sensitive to the number of points in the grid, as the integrals converge more slowly. Also, setting $\lambda$ to a nonzero value
 can introduce numerical instability in the integrals, as the integrands can become highly oscillatory, therefore making the pricer and the vega compensator disagree. Speaking of integration, 
-the Euler--Maruyama method was used to simulate and calculate the Stochastic Differential Equation used in the Heston model and the subsequent error model.  The price is used as
+the Euler-Maruyama method was used to simulate and calculate the Stochastic Differential Equation used in the Heston model and the subsequent error model.  The price is used as
 levels rather than as log prices. This was done because an Euler step $\Delta S = rS\,\Delta t + \sqrt{v}\,S\,\Delta X$ has conditional variance $vS^2\,\Delta t$, which is exactly the quantity the Gamma compensator
 $(\Delta S)^2 - vS^2\,\Delta t$ subtracts. Simulating in levels therefore keeps that compensator exact, so any residual left in the test reflects genuine second-order Taylor truncation rather than a mismatch 
 between how the paths were generated and how the error was decomposed. A log-Euler step would reintroduce such a mismatch through the $-\frac{1}{2}v$ Itô correction, which the level scheme does not carry.
@@ -265,26 +265,18 @@ wary in their usage of 0DTE options, as they are inherently risky and difficult 
 
 A further limitation is structural. Heston is a pure-diffusion model, so the decomposition carries no jump term; any intraday jump in the underlying enters only
 through $(\Delta S)^2$ and is therefore absorbed into the Gamma term, indistinguishable from ordinary diffusive movement. This matters for 0DTE in particular: 
-Bo\v{z}ovi\'c (2025), working with five-minute SPXW options, estimates the implied jump-risk premium at nearly twice the combined diffusion and volatility premia,
+\cite{bozovic2025}, working with five-minute SPXW options, estimates the implied jump-risk premium at nearly twice the combined diffusion and volatility premia,
 with jump intensity clustering at the open and close. The roughly ninety-percent Gamma share reported above should therefore be read as diffusion and jump risk combined;
 isolating the two would require adding a jump term to the decomposition, a natural extension for future work.
 
 
 \section{Conclusion}
-Applying the compensated-Greek decomposition to 0DTE options at intraday frequency shows that the hedging
-error lives overwhelmingly in Gamma---roughly nine-tenths of it in every regime---but that the
-second-order story is regime-dependent: the Gamma--Vega balance swings from about $94/1$ on the calmest
-days to $82/11$ on the most turbulent, as volatility risk moves from dormant to material. The value of the
-exercise is less in confirming that Gamma dominates, which is expected of an option hedged only in the
-underlying, than in quantifying how much and showing where the remainder goes. Read alongside the
-pure-diffusion limitation above, the natural next term to isolate is jump risk, and the planned follow-up
-turns from measuring the error to hedging it. 
 
 \appendix
 \section{Glossary of Variables}
 
 The sensitivity Greeks ($\Delta$, $\Gamma$, $\nu$, $\Theta$, and the higher-order terms) are
-defined in Section~\ref{subsec:greeks}. The symbols below collect the model, market, and hedging notation that the
+defined in Section~1. The symbols below collect the model, market, and hedging notation that the
 Heston and derivation sections introduce along the way.
 
 \medskip
@@ -292,7 +284,7 @@ Heston and derivation sections introduce along the way.
 \begin{itemize}
     \item $S$: price of the underlying asset (the spot), rescaled so that each trading day opens at $1$.
     \item $v$: instantaneous variance of the underlying; the volatility is $\sqrt{v}$.
-    \item $\sigma$: volatility, with $\sigma = \sqrt{v}$; used in the Greek definitions of Section~\ref{subsec:greeks}.
+    \item $\sigma$: volatility, with $\sigma = \sqrt{v}$; used in the Greek definitions of Section~1.
     \item $t$: calendar time. Written as a prefix, $\Delta t$ is a single hedging interval (one five-minute bar in the test).
     \item $\mu$: real-world (physical) drift of the underlying.
     \item $r$: risk-free interest rate ($r = 0.045$ in the test).
@@ -320,11 +312,6 @@ Heston and derivation sections introduce along the way.
 
 \begin{thebibliography}{9}
 
-\bibitem{Maruyama1955}
-Maruyama, G. (1955).
-\textit{Continuous Markov Processes and Stochastic Equations.}
-Rendiconti del Circolo Matematico di Palermo, 4, 48--90.
-
 \bibitem{blackscholes1973}
 Black, F. and Scholes, M. (1973).
 \textit{The Pricing of Options and Corporate Liabilities.}
@@ -335,25 +322,55 @@ Merton, R. C. (1973).
 \textit{Theory of Rational Option Pricing.}
 The Bell Journal of Economics and Management Science, 4(1), 141--183.
 
-\bibitem{Milstein1975}
-Milstein, G. N. (1975).
-\textit{Approximate Integration of Stochastic Differential Equations.}
-Theory of Probability and Its Applications, 19(3), 557--562.
-
 \bibitem{heston1993}
 Heston, S. L. (1993).
 \textit{A Closed-Form Solution for Options with Stochastic Volatility with Applications to Bond and Currency Options.}
 The Review of Financial Studies, 6(2), 327--343.
+
+\bibitem{gatheral2006}
+Gatheral, J. (2006).
+\textit{The Volatility Surface: A Practitioner's Guide.}
+Wiley, Hoboken, NJ.
+
+\bibitem{elkaroui1998}
+El~Karoui, N., Jeanblanc-Picqu\'e, M., and Shreve, S. E. (1998).
+\textit{Robustness of the Black and Scholes Formula.}
+Mathematical Finance, 8(2), 93--126.
+
+\bibitem{kamalderman1999}
+Kamal, M. and Derman, E. (1999).
+\textit{When You Cannot Hedge Continuously: The Corrections to Black--Scholes.}
+Risk, 12(1), 82--85.
+
+\bibitem{bertsimas2000}
+Bertsimas, D., Kogan, L., and Lo, A. W. (2000).
+\textit{When Is Time Continuous?}
+Journal of Financial Economics, 55(2), 173--204.
+
+\bibitem{gobettemam2001}
+Gobet, E. and Temam, E. (2001).
+\textit{Discrete Time Hedging Errors for Options with Irregular Payoffs.}
+Finance and Stochastics, 5(3), 357--367.
 
 \bibitem{bergomi2016}
 Bergomi, L. (2016).
 \textit{Stochastic Volatility Modeling.}
 Chapman and Hall/CRC, Boca Raton, FL.
 
+\bibitem{dimeraker2023}
+Dim, C., Eraker, B., and Vilkov, G. (2023).
+\textit{0DTEs: Trading, Gamma Risk and Volatility Propagation.}
+Working paper.
+
 \bibitem{bozovic2025}
 Bo\v{z}ovi\'c, M. (2025).
 \textit{Intraday Jumps and 0DTE Options: Pricing and Hedging Implications.}
 Working paper, SSRN 5223127.
+
+\bibitem{cboe2023vix1d}
+Cboe Global Markets (2023).
+\textit{Cboe 1-Day Volatility Index (VIX1D) Methodology.}
+Cboe Global Markets.
 
 \end{thebibliography}
 
