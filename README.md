@@ -4,11 +4,16 @@ and distilled my findings in this paper.
 
 ## Repository Guide 
 `intraday.csv` is the file that holds all of the data used.
+
 `paper1.pdf` is the visible pdf format of the paper (Use this to read the paper)
+
 `paper1.tex` is the LaTeX script used to generate `paper1.pdf`
+
 `paper1_implementation.py` is the Python Script used to error decompose the greeks
+
 Please install pandas and numpy in your venv to run the program. Please ensure that `intraday.csv` is in the same folder when running. 
-Command to run `python paper1_implementation.py`
+
+Command to run: `python paper1_implementation.py`
 
 ## Methodology & Limitations 
 The full methodology section is found inside `paper1.pdf`. The following is a summary:
