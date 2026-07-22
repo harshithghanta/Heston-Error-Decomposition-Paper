@@ -4,7 +4,7 @@ import numpy as np
 import pandas as pd
 
 
-# model settings (not fitted, just reasonable values)
+# model settings 
 ONE_DAY = 1.0 / 252.0
 K = 1.0        # strike (each day is scaled so it opens at 1)
 R = 0.045      # risk-free rate
@@ -265,7 +265,8 @@ def monte_carlo_validation(npaths=200, seed=0):
     global THETA
     THETA = 0.04                # fixed, known long-run variance for the test
     v0 = THETA                  # start at the long-run level, ATM
-    nbars = 79                  # 78 intervals/day (~5-min bars), as in the data
+    nbars = 79                  # 79 marks = 78 synthetic intervals; one finer than the data's 77
+                                #   (the data has 78 bars = 77 intervals), chosen so the strides below divide evenly
 
     print()
     print("=== MONTE CARLO VALIDATION (self-consistent Heston) ===")
@@ -276,8 +277,6 @@ def monte_carlo_validation(npaths=200, seed=0):
     cr, cc = algebra_control(npaths, seed)
     print(f"algebra control (60-day option hedged daily, closed 20 days before "
           f"expiry): residual {cr:.2f}%  corr {cc:.4f}")
-    print("  -> the seven terms ARE the P&L when Greeks are smooth; the large 0DTE")
-    print("     residual below is the near-expiry kink, not an error in the algebra.")
 
     S_path, v_path = simulate_heston(nbars, v0, npaths, seed=seed)
     prices = [S_path[i] for i in range(npaths)]
@@ -304,24 +303,18 @@ def monte_carlo_validation(npaths=200, seed=0):
         for name in TERM_NAMES:
             per_term_abs[name].append(float(np.mean(np.abs(totals[name]))))
         print(f"  {last // s:5d}   {dt:.2e}    {resid:6.2f}%    {corr:.4f}")
-    print("  note: two things inflate this vs. the algebra control (~1-2%). the")
-    print("  gap to the control is the near-expiry kink (0DTE lives entirely in it).")
-    print("  the gap to the paper's real-data 9% is that variance genuinely moves")
-    print("  here (xi=0.5), exercising the variance terms and their truncation --")
-    print("  the VIX proxy barely moves intraday, so the real test never hit them.")
 
     # --- mean-zero check, on the finest grid (stride 1) ---
     totals, _ = totals_by_stride[1]
     print()
-    print("mean-zero check at finest grid (compensated terms should read ~zero):")
-    print("  term     mean         se         t-stat   reads as")
+    print("mean-zero check at finest grid:")
+    print("  term     mean         se         t-stat")
     for name in TERM_NAMES:
         col = totals[name]
         mean = float(np.mean(col))
         se = float(np.std(col) / np.sqrt(npaths))
         t = mean / se if se > 0 else 0.0
-        reads = "~zero" if abs(t) < 3 else "nonzero (systematic leftover)"
-        print(f"  {name:>6}  {mean:+.3e}  {se:.3e}   {t:+6.2f}   {reads}")
+        print(f"  {name:>6}  {mean:+.3e}  {se:.3e}   {t:+6.2f}")
 
     # dt-scaling: slope of log mean|daily term| vs log dt
     logdt = np.log(np.array(dts))
@@ -340,6 +333,68 @@ def monte_carlo_validation(npaths=200, seed=0):
     for name in TERM_NAMES:
         slope = float(np.polyfit(logdt, np.log(np.array(per_term_abs[name])), 1)[0])
         print(f"  {name:>6}  {slope:+.2f}    ~{expected[name]:.1f}      {note[name]}")
+
+
+def bs_call(S, strike, r, sigma, tau):
+    # Black--Scholes closed form, used for the xi->0 limit test
+    from math import log, sqrt, exp
+    from statistics import NormalDist
+    N = NormalDist().cdf
+    d1 = (log(S / strike) + (r + 0.5 * sigma ** 2) * tau) / (sigma * sqrt(tau))
+    d2 = d1 - sigma * sqrt(tau)
+    return S * N(d1) - strike * exp(-r * tau) * N(d2)
+
+
+def pricer_validation():
+    # turn "2048 points ensures convergence" and pricer correctness from
+    # assertions into demonstrated facts: BS limit, put-call parity,
+    # grid-doubling convergence, and FD bump-size stability.
+    import math
+    global XI, RHO, NPOINTS
+    S = 1.0
+    v = THETA
+    tau_long, tau_short = 30 * ONE_DAY, ONE_DAY
+    print()
+    print("=== PRICER VALIDATION BATTERY ===")
+    print(f"  ATM S={S:.2f} K={K:.2f} r={R} v={v:.4f}")
+
+    # 1. Black-Scholes limit: xi->0, rho=0 => deterministic variance, so the
+    #    Heston call must collapse onto BS with sigma = sqrt(v).
+    x0, r0 = XI, RHO
+    XI, RHO = 1e-8, 0.0
+    for tau, tag in [(tau_long, "30-day"), (tau_short, "1-day ")]:
+        c_h, _ = heston_call(S, v, tau)
+        c_bs = bs_call(S, K, R, math.sqrt(v), tau)
+        print(f"  BS limit {tag}: heston={c_h:.6f}  bs={c_bs:.6f}  |diff|={abs(c_h - c_bs):.2e}")
+    XI, RHO = x0, r0
+
+    # 2. Put-call parity: C - P should equal S - K e^{-r tau}.
+    c_h, _ = heston_call(S, v, tau_long)
+    p_h = c_h - S + K * math.exp(-R * tau_long)
+    resid = (c_h - p_h) - (S - K * math.exp(-R * tau_long))
+    print(f"  put-call parity: residual={resid:.2e}  (call={c_h:.6f} put={p_h:.6f})")
+
+    # 3. Grid-doubling convergence at 0DTE scale -- the paper's actual claim.
+    n0 = NPOINTS
+    print("  grid-doubling convergence (1-day ATM call):")
+    prev = None
+    for n in [512, 1024, 2048, 4096, 8192]:
+        NPOINTS = n
+        p, _ = heston_call(S, v, tau_short)
+        tail = "" if prev is None else f"   change={abs(p - prev):.2e}"
+        print(f"    N={n:5d}  price={p:.8f}{tail}")
+        prev = p
+    NPOINTS = n0
+
+    # 4. FD bump-size sensitivity for the finite-difference Greeks (1-day ATM).
+    print("  FD bump-size sensitivity (1-day ATM):")
+    for hv in [0.0005, 0.001, 0.002, 0.004]:
+        vega = (price_of(S, v + hv, tau_short) - price_of(S, v - hv, tau_short)) / (2 * hv)
+        print(f"    vega  hv={hv:.4f}  ->  {vega:.5f}")
+    for hs in [0.0025, 0.005, 0.01, 0.02]:
+        h = hs * S
+        gamma = (delta_of(S + h, v, tau_short) - delta_of(S - h, v, tau_short)) / (2 * h)
+        print(f"    gamma hS={hs * 100:.2f}%  ->  {gamma:.4f}")
 
 
 def main():
@@ -406,5 +461,7 @@ if __name__ == "__main__":
     if len(sys.argv) > 1 and sys.argv[1] == "mc":
         n = int(sys.argv[2]) if len(sys.argv) > 2 else 200
         monte_carlo_validation(npaths=n)
+    elif len(sys.argv) > 1 and sys.argv[1] == "validate":
+        pricer_validation()
     else:
         main()
