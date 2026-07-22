@@ -12,9 +12,9 @@
 \begin{abstract}
 Zero Days to Expiration Options (0DTE) have increased in popularity since CBOE released daily SPX expirations in 2022. However, they are
 difficult to hedge, and the sources of hedging error are not well understood. This paper takes the Heston model as a starting point
-and uses an industry-standard Greek-by-Greek decomposition to analyze the sources of discrete hedging error taken at five-minute intervals.
+and uses an industry-standard Greek-by-Greek decomposition to analyze the sources of hedging error for a delta hedge rebalanced at five-minute intervals.
 In this paper, the decomposition attributes the lion's share of error to Gamma, which absorbs both diffusion convexity and any jump
-risk the model cannot identify. In higher volatility regimes, the share of error carried by Vega increases from $1\%$ to $11\%$, while Gamma's share
+risk the model cannot identify. In higher volatility regimes, the attribution share carried by Vega increases from $1\%$ to $11\%$, while Gamma's
 falls from $94\%$ to $82\%$.
 
 \end{abstract}
@@ -203,6 +203,16 @@ The Heston model assumes continuous hedging; therefore, $\Delta t \to 0$. Howeve
 + \frac{\partial^2 V}{\partial v\,\partial t}\,\Delta v\,\Delta t
 + \frac{1}{2} \frac{\partial^2 V}{\partial t^2}\,(\Delta t)^2 .
 \]
+Not every term above is discretization error, and the distinction matters. Summed over a day, the Gamma, Vanna, and Volga
+compensators vanish as the hedging interval shrinks---realized quadratic variation converges to the model's $\int v S^2\,dt$, and
+likewise for the cross and variance brackets---and the charm, veta, and time-convexity terms are of order $\Delta t$ or smaller.
+Those six terms measure finite-mesh error: the price of rebalancing every five minutes instead of continuously. The Vega term is
+different. Its sum converges to $\int \frac{\partial V}{\partial v}\,\epsilon\sqrt{v}\,dW$, a random quantity that survives any
+rebalancing frequency. It is not discreteness at all; it is the variance risk that a delta-only hedge leaves open, because the
+hedge holds no second option. The Heston derivation above removed this risk with the hedging option $V_1$; the experiment below
+deliberately holds only the stock, as most 0DTE hedgers do, so the Vega term tracks genuinely unhedged risk rather than
+finite-mesh error. The decomposition therefore separates two kinds of leftovers: terms that shrink with the hedging interval, and
+one term that no hedging interval can shrink.
 \newpage
 \subsection{Methodology}
 The Heston parameters were not calibrated to data: apart from $\eta$, they are round, arbitrarily chosen values.
@@ -226,8 +236,8 @@ In terms of the derivation itself, the specific terms above were chosen to allow
 for all the terms to be expressed as Greeks, and have a discrete and nondiscrete component. The discrete component is the difference between the actual change
 in the underlying asset and the expected change, while the nondiscrete component is the expected change itself. The discrete component, following Bergomi's 2016 book,
 is what contributes to the
-hedging error, while the nondiscrete component is what is expected to be hedged away. If the limit is taken, then the model collapses back to the Heston model, as
-the discrete component goes to zero.
+hedging error, while the nondiscrete component is what is expected to be hedged away. If the limit is taken, the model collapses back to the Heston model for every term except Vega:
+the other compensators go to zero with the hedging interval, while the Vega term converges to the unhedged variance risk described above.
 
 In the implementation, the trapezoid rule was used to compute the integrals in the Heston pricer, and the Greeks were computed using finite differences.
 The code is available in the accompanying Python file on GitHub. The $\omega$ grid begins at $10^{-8}$ to avoid the $1/(i\omega)$ singularity at zero, and the upper limit of
@@ -243,8 +253,8 @@ between how the paths were generated and how the error was decomposed. A log-Eul
 
 
 The variance path is read off the VIX, which is a proxy in two respects. First, $\mathrm{VIX}^2$ is a
-risk-neutral quantity rather than a physical one; with $\lambda = 0$ this costs nothing, since the
-physical and risk-neutral variance dynamics then coincide. Second, and more consequentially,
+risk-neutral quantity rather than a physical one, and it embeds a variance risk premium that the model,
+with $\lambda = 0$, does not capture. Second, and more consequentially,
 $\mathrm{VIX}^2$ is the expected \emph{average} variance over the coming thirty days, whereas the model
 calls for the instantaneous spot variance $v_t$. Because variance mean-reverts, a thirty-day forward
 average is not the same object as the spot value---it is pulled toward the long-run level and barely
@@ -256,18 +266,18 @@ reasonable stand-in.
 \subsection{Validation}
 According to Bertsimas, Kogan, and Lo (2000)~\cite{bertsimas2000}, the granularity constant $g$---the measure of how difficult an option is to hedge
 in discrete time, and the constant that sets the size of the tracking error---blows up in the terminal interval. Along with that,
-the Taylor expansion fails as the option approaches expiry, causing the 9\% residual error reported in the next subsection. To illustrate this, an
-option was set with a 60-day expiration, and hedged daily. The final piece of data comes from the 20-day-to-expiration mark, where the
-error was only 2.35\%, which is a significant drop from the 9\% error at 0DTE. This illustrates that the Taylor expansion fails as the option approaches expiry, 
-and that the granularity constant $g$ blows up in the terminal interval, causing the hedging error to increase significantly. This is a fundamental issue
-with 0DTE options, and is not an issue in the mathematics or the implementation of the model. 
+the Taylor expansion fails as the option approaches expiry, causing the 9\% residual error reported in the next subsection. To illustrate this, a
+60-day option was simulated under the same Heston engine and hedged daily, with the position closed 20 days before expiry; there
+the residual was only 2.35\%, against the 9\% at 0DTE. The comparison is suggestive but uncontrolled: the two tests differ in
+data source (simulated versus market), maturity, hedge frequency, and distance from expiry at close, so the gap cannot be
+attributed to the terminal interval alone. 
 
 
 
 \subsection{Results and Testing}
-The decomposition was tested on 56 full trading days of five-minute data (78 bars per day, so 77 hedge intervals). Each day is rescaled to open at 1, the variance path is read off the squared VIX, and the option is a fresh at-the-money 0DTE call re-formed each morning and delta-hedged at every bar. Summing the seven compensated terms reproduces the realized hedged P\&L to within a $9\%$ residual, with a mean daily hedged P\&L of $-0.00235$ (in the units where the underlying opens at 1) and a standard deviation of $0.00122$.
+The decomposition was tested on 56 full trading days of five-minute data (78 bars per day, so 77 hedge intervals). Each day is rescaled to open at 1, the variance path is read off the squared VIX, and the option is a fresh at-the-money 0DTE call re-formed each morning and delta-hedged at every bar. Summing the seven compensated terms reproduces the realized hedged P\&L to within a $9\%$ residual---defined as the mean absolute unexplained P\&L divided by the mean absolute daily P\&L---with a mean daily hedged P\&L of $-0.00235$ (in the units where the underlying opens at 1) and a standard deviation of $0.00122$.
 
-Table~\ref{tab:attribution} attributes that error term by term, reporting each term's share of the total average absolute daily contribution---first over all days, then split into three regimes by how far the VIX travelled intraday.
+Table~\ref{tab:attribution} attributes that P\&L term by term. The percentages are gross absolute model-attribution shares: each term's average absolute daily contribution as a fraction of the sum across all seven terms, computed from model Greeks. Because terms can offset within a day, these shares measure how much each term moves, not a split of the realized hedging error. In the table, Vega, Vanna, Volga, and Veta denote derivatives with respect to the variance $v$, not the volatility $\sigma$ of Section~1; the two are related by chain rule but are not numerically identical. The shares are reported first over all days, then split into three regimes by how far the VIX travelled intraday.
 
 \begin{table}[H]
 \centering
@@ -284,11 +294,11 @@ Volga $\left(\frac{1}{2}\,\partial^2 V/\partial v^2\right)$          &  0.25 &  
 Veta $\left(\partial^2 V/\partial v\,\partial t\right)$              &  0.11 &  0.04 &  0.08 &  0.23 \\
 \hline
 \end{tabular}
-\caption{Share of the daily hedged P\&L carried by each decomposition term, as a percentage of the total average absolute daily contribution. Days are sorted into terciles by the absolute intraday change in the VIX: calm ($n=19$, $\langle |\Delta\mathrm{VIX}| \rangle = 0.12$), mid ($n=18$, $0.47$), and turbulent ($n=19$, $1.57$).}
+\caption{Gross absolute model-attribution share of each decomposition term, as a percentage of the summed average absolute daily contributions. Days are sorted into terciles by the absolute intraday change in the VIX: calm ($n=19$, $\langle |\Delta\mathrm{VIX}| \rangle = 0.12$), mid ($n=18$, $0.47$), and turbulent ($n=19$, $1.57$).}
 \label{tab:attribution}
 \end{table}
 
-Gamma dominates in every regime, as one would expect of an option hedged only in the underlying: on a typical day roughly nine-tenths of the hedging error is the $\frac{1}{2}\,\partial^2 V/\partial S^2$ term. What shifts with the regime is where the remaining tenth comes from. On calm days Gamma carries $94\%$ and Vega barely $1\%$; on turbulent days Gamma's share falls to $82\%$ while Vega climbs to $11\%$, absorbing almost all of the share Gamma gives up. The volatility-driven error is essentially dormant when the VIX sits still and becomes the second-order story precisely when it does not. Everything else---Vanna, Charm, time convexity, Volga, and Veta---stays within a few percent throughout, confirming that for 0DTE the hedging error lives overwhelmingly in Gamma, with Vega as the regime-dependent runner-up.
+Gamma dominates in every regime, as one would expect of an option hedged only in the underlying: on a typical day roughly nine-tenths of the hedging error is the $\frac{1}{2}\,\partial^2 V/\partial S^2$ term. What shifts with the regime is where the remaining tenth comes from. On calm days Gamma carries $94\%$ and Vega barely $1\%$; on turbulent days Gamma's share falls to $82\%$ while Vega climbs to $11\%$, absorbing almost all of the share Gamma gives up. Part of this pattern is mechanical---sorting days by $|\Delta\mathrm{VIX}|$ necessarily favors the Vega term in the turbulent bucket---so the informative facts are the size of the swing and Gamma's persistence, not the direction of the shift. The volatility-driven error is essentially dormant when the VIX sits still and becomes the second-order story precisely when it does not. Everything else---Vanna, Charm, time convexity, Volga, and Veta---stays within a few percent throughout, confirming that for 0DTE the hedging error lives overwhelmingly in Gamma, with Vega as the regime-dependent runner-up.
 
 \subsection{Limitations and Future Work}
 The model is limited by the accuracy of the Heston parameters, an issue one can easily fix with better data. Another limitation is found in the premise itself:
@@ -308,7 +318,7 @@ isolating the two would require adding a jump term to the decomposition, a natur
 \section{Conclusion}
 Learning the different attributions of the error is important for understanding the risks of 0DTE options and being
 able to use them in an effective manner. The results show that the majority of the error is carried by Gamma, which the
-model conflates with jumps. The remaining error is mostly regime-dependent, as Vega increases its contribution as the regime becomes
+model conflates with jumps. The remaining error is mostly regime-dependent, as Vega---the variance risk a delta-only hedge cannot remove at any rebalancing frequency---increases its contribution as the regime becomes
 increasingly turbulent. The other Greeks, while not negligible, are relatively small and do not change much across regimes. 
 The results of this paper are a proof of concept, and further work is needed to refine the model and improve the accuracy of the results.
 Future work should focus on improving the Heston parameter estimates, adding a jump term to the decomposition, and testing the model on a wider range of data.
