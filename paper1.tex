@@ -12,7 +12,7 @@
 \maketitle
 
 \begin{abstract}
-Zero Days to Expiration Options (0DTE) have increased in popularity since CBOE released daily SPX expirations in 2022. However, they are
+Zero Days to Expiration Options (0DTE) have increased in popularity since CBOE released daily SPY expirations in 2022. However, they are
 difficult to hedge, and the sources of hedging error are not well understood. This paper takes the Heston model as a starting point
 and uses an industry-standard Greek-by-Greek decomposition to measure how much each Greek moves the profit and loss of an
 at-the-money delta hedge rebalanced at five-minute intervals. Shares are reported as gross absolute attribution shares computed
@@ -28,7 +28,7 @@ $\mathrm{VIX}^2$ variance fed to the model runs about three times the variance t
 \section{Introduction}
 This paper investigates the Greeks as sources of discrete hedging error for at-the-money 0DTE options under Heston.
 It takes the standard compensated-Greek decomposition of a delta-hedged option's profit and loss and applies it to
-at-the-money 0DTE calls, hedged at five-minute frequency on real SPX data. The contribution is a term-by-term measurement of how
+at-the-money 0DTE calls, hedged at five-minute frequency on real SPY data. The contribution is a term-by-term measurement of how
 much each Greek moves the hedged profit and loss, and how that ranking shifts with the volatility regime. The measure is a gross
 absolute attribution share rather than a signed decomposition of the realized error, a distinction developed in
 Section~\ref{sec:results}. Gamma dominates in every regime, but the balance between Gamma and Vega swings from roughly $94/1$ to
@@ -226,7 +226,7 @@ $\kappa = 3$ and a five-minute step is of order $10^{-6}$, against a typical per
 of magnitude larger. The vol-of-vol $\epsilon$ has no such protection, since it scales the Volga
 compensator as $\epsilon^2 v\,\Delta t$ and the Vanna compensator as $\rho\epsilon v S\,\Delta t$.
 
-Five-minute SPX data was used as a proxy for the underlying asset; the pipeline rescales each day to open at 1, so the results are invariant to the units of the price series. The sample covers 56 trading days, from March 31st, 2026 through June 18th, 2026.
+Five-minute SPY data was used as a proxy for the underlying asset; the pipeline rescales each day to open at 1, so the results are invariant to the units of the price series. The sample covers 56 trading days, from March 31st, 2026 through June 18th, 2026.
 That window contains every regular NYSE session in the range apart from Good Friday and Memorial Day, which is where the count of 56 comes from.
 The option prices were computed using the Heston model, and the hedging error was measured by rebalancing the delta hedge at each five-minute bar.
 The contributions of each Greek to the overall hedged profit and loss were then analyzed and their results are found
@@ -278,7 +278,7 @@ $\mathrm{VIX}^2$ is the expected \emph{average} variance over the coming thirty 
 calls for the instantaneous spot variance $v_t$. Because variance mean-reverts, a thirty-day forward
 average is pulled toward the long-run level and barely moves intraday, so the variance terms are only
 lightly exercised on real data. Cboe's
-VIX1D index, introduced in 2023 and computed from zero- to one-day SPXW options~\cite{cboe2023vix1d}, is the horizon-matched
+VIX1D index, introduced in 2023 and computed from zero- to one-day SPY options~\cite{cboe2023vix1d}, is the horizon-matched
 measure and should replace the VIX in future work.
 
 This paper does not perform the VIX1D substitution. The expected effect is directional and stateable: a
@@ -396,7 +396,7 @@ representation of the underlying asset's volatility.
 
 A further limitation is structural. Heston is a pure-diffusion model, so the decomposition carries no jump term; any intraday jump in the underlying enters only
 through $(\Delta S)^2$ and is therefore absorbed into the Gamma term, indistinguishable from ordinary diffusive movement. For 0DTE the omission is costly.
-Bo\v{z}ovi\'c (2025)~\cite{bozovic2025}, working with five-minute SPXW options, estimates the implied jump-risk premium at nearly twice the combined diffusion and volatility premia,
+Bo\v{z}ovi\'c (2025)~\cite{bozovic2025}, working with five-minute SPY options, estimates the implied jump-risk premium at nearly twice the combined diffusion and volatility premia,
 with jump intensity clustering at the open and close. The roughly ninety-percent Gamma share reported above should therefore be read as diffusion and jump risk combined;
 isolating the two would require adding a jump term to the decomposition.
 
