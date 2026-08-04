@@ -24,6 +24,7 @@ subsample, both regime sorts, and the variance-proxy diagnostics. It takes a cou
 Other entry points:
 
 - `python paper1_implementation.py full` — adds the terminal-interval ladder and the κ and ε sweeps (several minutes)
+- `python paper1_implementation.py detrend` — removes VIX1D's intraday roll from the variance input and reruns, which is the robustness check in §3.2
 - `python paper1_implementation.py validate` — pricer battery: Black-Scholes limit, put-call parity, grid convergence, finite-difference bump stability
 - `python paper1_implementation.py mc [npaths]` — Monte Carlo validation of the decomposition algebra on simulated Heston paths
 
@@ -46,5 +47,7 @@ daily contribution (Gamma 50.0%, Vega 34.7%, 20.2% unattributed on the harsher g
 ε = 1.0; ε = 0.5 and 2.0 are reported as a sweep in the paper.
 
 Caveat worth knowing before reading the results: VIX1D climbs mechanically through the session (10.9 at the open to 13.9 at the close 
-on average, up on 55 of 57 days) because its 24-hour window rolls onto the overnight gap. That roll manufactures the drift in the Vega 
-term, so the paper treats term-level drifts as proxy artifacts rather than as risk premia. 
+on average, up on 55 of 57 days) because its 24-hour window rolls onto the overnight gap — by the final bar only 0.3% of what the index 
+measures bears on a contract expiring that afternoon. That roll manufactures the drift in the Vega term, so the paper treats term-level 
+drifts as proxy artifacts rather than as risk premia. §3.2 removes the roll and reruns: the Vega drift collapses (t = +6.5 to +0.6) and 
+the attribution shares barely move, which is the check that the drift is the artifact and the shares are not. 

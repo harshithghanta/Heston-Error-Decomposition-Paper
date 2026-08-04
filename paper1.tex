@@ -307,16 +307,21 @@ over the coming twenty-four hours, so as a session advances its window rolls off
 and the following session. For a contract expiring at today's close the remaining variance should decay toward zero over the
 session; VIX1D instead climbs, averaging $10.90$ at 09:30 and $13.93$ at 15:55 across the sample, rising on 55 of the 57 days at a
 Newey--West $t$ of $+8.5$. The index is horizon-matched in name, but its intraday path carries a deterministic roll-up that the
-model reads as genuine variance news. Section~\ref{sec:results} shows that this roll is what gives the Vega term its drift, and the
-drift should be read as a property of the proxy rather than of the market. Detrending the roll, or building a proxy that
-interpolates the term structure down to the actual remaining maturity, is the natural correction and is left to future work.
-% TODO(HG): decision needed. Two options I did not take for you:
-%   (a) scope-only, which is what is written above -- name the roll, attribute the Vega drift to it, move on.
-%   (b) actually detrend: subtract the sample-average intraday VIX1D path before computing dv, and rerun.
-% Option (b) is a real result rather than a caveat, but it changes Table 1 again and needs your sign-off on
-% the detrending choice. Also: if you want the paper to SHOW the 30-day VIX contrast rather than argue it,
-% fetch_data.py has to pull vix_close alongside vix1d_close again -- the current intraday.csv dropped it,
-% so no VIX-vs-VIX1D comparison in this draft is reproducible from the shipped data.
+model reads as genuine variance news.
+
+The size of the mismatch can be stated exactly. A contract expiring at today's close has $390 - 5b$ minutes of life left at the
+$b$th five-minute bar, while VIX1D always looks forward a fixed $1440$ minutes, so the fraction of the index's window that bears
+on the contract at all falls from $27.1\%$ at the open to $18.8\%$ at 11:30, $10.4\%$ at 13:30, and $0.3\%$ in the final bar. By
+the close, essentially all of what VIX1D is measuring is tomorrow. This is why the roll is mechanical rather than incidental, and
+it also bounds what any correction can achieve: an adjustment can remove the average climb, but it cannot recover information the
+index does not carry. Section~\ref{sec:detrend} removes the climb and shows that doing so eliminates the Vega term's drift and
+leaves the attribution intact. The properly matched instrument would be the implied variance of the expiring contract itself,
+read off 0DTE option prices at each bar, which requires the option data this paper does not have.
+% Marker (b) from the earlier draft is now resolved: the detrending is done, and it lives in section
+% 3.5 as a robustness check rather than as the baseline -- the adjustment is built from the full-sample
+% mean path, so it is not implementable in real time and should not headline. Still open if you want it:
+% showing the 30-day VIX contrast rather than arguing it would need fetch_data.py to pull vix_close
+% alongside vix1d_close again; the current intraday.csv dropped that column.
 
 \section{Validation \& Results}
 \label{sec:validation}
@@ -430,6 +435,73 @@ The two remaining robustness questions are the mean-reversion rate $\kappa$ and 
 \label{tab:sensitivity}
 \end{table}
 
+\subsection{Removing the Variance Proxy's Intraday Roll}
+\label{sec:detrend}
+Section~\ref{sec:methodology} argued that VIX1D climbs through the session for a mechanical reason and that the climb is what
+gives the Vega term its drift. That argument can be tested rather than asserted, by removing the climb and rerunning everything.
+
+The adjustment is the simplest one that does the job. Averaging across the 57 days gives a mean intraday path $m(b)$ at each
+five-minute bar $b$, rising from $10.90$ index points at the open to $13.93$ at the close. Each day's level is then reduced by the
+amount the average day had gained by that bar,
+\[
+\widetilde{L}(d,b) = L(d,b) - \big[\,m(b) - m(0)\,\big],
+\]
+so the subtraction is zero at the open and $3.03$ points by the close, and $\widetilde{L}^2/100^2$ replaces $v$ everywhere. Only
+the variance input changes; prices, realized P\&L, and the pricing machinery are untouched. The adjustment removes only what every
+day shares, so the cross-day dispersion of the net move is unaffected, its standard deviation staying at $2.59$ points, while the
+mean net move falls from $+3.03$ points to zero and the count of rising days falls from 55 of 57 to 24. A day that gained the
+typical three points now shows no net move, which is the correct reading, while the most turbulent day in the sample,
+2026-06-05, still gains $11.35$ points of the $14.38$ it appeared to gain. A multiplicative variant,
+$\tilde{v}(d,b) = v(d,b)\,[m(0)/m(b)]^2$, is reported alongside to show the conclusions do not turn on the functional form.
+
+\begin{table}[H]
+\centering
+\small
+\setlength{\tabcolsep}{5pt}
+\begin{tabular}{lrrr}
+\toprule
+& Baseline & Additive & Multiplicative \\
+\midrule
+Vega term, Newey--West $t$        & $+6.48$ & $+0.56$ & $+0.60$ \\
+Gamma term, Newey--West $t$       & $-6.21$ & $-2.15$ & $-1.85$ \\
+Hedged P\&L, Newey--West $t$      & $-1.87$ & $-1.99$ & $-1.95$ \\
+Model QV / realized QV            & $1.33\times$ & $1.07\times$ & $1.06\times$ \\
+\quad days model exceeds          & 51/57 & 40/57 & 40/57 \\
+\midrule
+Gamma share, gross / variance     & 50.0 / 64.6 & 46.7 / 63.2 & 48.1 / 66.3 \\
+Vega share, gross / variance      & 34.7 / 31.5 & 34.8 / 37.1 & 32.9 / 32.8 \\
+Gross residual                    & $20.2\%$ & $16.7\%$ & $17.4\%$ \\
+Unexplained variance              & $5.9\%$  & $3.0\%$  & $3.1\%$ \\
+\bottomrule
+\end{tabular}
+\caption{The attribution before and after the intraday roll is removed from the variance proxy. The additive adjustment subtracts
+the sample-average gain in VIX1D points; the multiplicative one rescales the variance by $[m(0)/m(b)]^2$. Everything other than
+the variance input is held fixed.}
+\label{tab:detrend}
+\end{table}
+
+Table~\ref{tab:detrend} settles the diagnosis. The Vega term's drift, which runs at a Newey--West $t$ of $+6.48$ on the raw proxy
+and at $+9.0$ and $+9.7$ in the two most active terciles, falls to $+0.56$ overall and to nothing in every tercile once the roll
+is removed. The roll was not one contributor to that drift, it was the whole of it. The Gamma term's drift weakens in the same
+motion, from $-6.21$ to $-2.15$, and the model's quadratic variation stops overshooting the realized quantity by a third, falling
+to within seven percent of it and exceeding it on 40 days rather than 51. Both of the large term-level drifts reported in
+Section~\ref{sec:results} are therefore properties of the proxy, and the second of them is largely the same defect as the first.
+
+What does not change is the attribution. Gamma's gross share moves from $50.0\%$ to $46.7\%$ and its variance share from $64.6\%$
+to $63.2\%$; Vega's gross share is unmoved at $34.8\%$ against $34.7\%$. The regime pattern survives, with Vega's gross share in
+the turbulent tercile at $46.7\%$ against $42.8\%$ on the raw proxy. The decomposition also reconstructs the realized P\&L better
+once the artifact is gone, the unexplained variance share falling from $5.9\%$ to $3.0\%$ and the gross residual from $20.2\%$ to
+$16.7\%$, which is what should happen if the removed component was genuinely spurious. The multiplicative variant agrees
+throughout.
+
+These are reported as a robustness check and not as the paper's headline, for a reason worth stating. The adjustment is
+constructed from the mean path of the whole sample, so it uses information that was not available at any point during the days it
+corrects, and a hedger running this strategy in real time would face the raw index and its drift. It also does not repair the
+underlying defect identified in Section~\ref{sec:methodology}: centring the proxy does not make it informative about the
+remaining session, since by the final bar only $0.3\%$ of its window bears on the contract at all. The claim supported here is
+narrower and more useful than a corrected headline would be, namely that the proxy has a known and measurable defect, that the
+defect accounts for the drifts and for nothing else, and that the attribution this paper reports is unchanged by it.
+
 \subsection{Limitations and Future Work}
 Four limits on the scope of these results should be stated plainly. The option studied is at the money at inception on every one
 of the 57 days, so the attribution is an at-the-money result and does not carry to the out-of-the-money strikes that make up much
@@ -439,8 +511,11 @@ strikes, which carry proportionally more Vega and Vanna, are left to future work
 the $\kappa$ and $\epsilon$ sweeps of Section~\ref{sec:results} show Gamma stays largest throughout but that its precise share depends on $\epsilon$,
 and no sweep over $\eta$, $\rho$, or $\lambda$ was attempted. The variance path is a one-day risk-neutral proxy standing in for an
 instantaneous physical variance: it runs about a third above the realized intraday variance, which flatters the Gamma share, and
-it carries the intraday roll-up documented in Section~\ref{sec:methodology}, which manufactures the Vega term's drift. Neither
-distortion is removed here, and correcting the second is the most valuable next step this paper can name. Finally, the two
+it carries the intraday roll-up documented in Section~\ref{sec:methodology}, which manufactures the Vega term's drift.
+Section~\ref{sec:detrend} removes the roll and finds the attribution unchanged, but that adjustment is estimated from the whole
+sample rather than available in real time, and it centres the proxy without making it informative about the remaining session. A
+variance path read from the expiring contract's own option prices is the real fix and needs data this paper does not have.
+Finally, the two
 attribution metrics measure different things and neither is complete on its own: the gross share records the size of a term's
 movement without regard to the realized error, while the variance share records covariance with the realized error and so is
 silent about terms that move a great deal without contributing to it.
@@ -471,10 +546,11 @@ The other Greeks, while not negligible, are relatively small; Vanna is the instr
 contributing to the error that is realized.
 These results are preliminary. They describe at-the-money calls at a single baseline parameter set, robust to the mean-reversion
 rate but not to the vol-of-vol, with a one-day variance proxy that runs about a third above realized variance and that climbs
-mechanically through the session. That last defect is the binding one: it manufactures the drift in the Vega term, and until it is
-corrected this sample can say nothing about whether a 0DTE delta hedge loses money on average. Further work is needed before the
+mechanically through the session. That climb manufactures the drift in the Vega term: removing it kills the drift outright and
+leaves the shares where they were, so the attribution survives the defect even though the sample can say nothing about whether a
+0DTE delta hedge loses money on average. Further work is needed before the
 attribution can be claimed for 0DTE hedging in general.
-Future work should focus on correcting the intraday roll in the variance proxy, improving the Heston parameter estimates, adding a jump term to the decomposition, and testing the model on a wider range of data.
+Future work should focus on reading the variance path from the expiring contract's own option prices rather than from an index of the wrong horizon, improving the Heston parameter estimates, adding a jump term to the decomposition, and testing the model on a wider range of data.
 
 
 \appendix

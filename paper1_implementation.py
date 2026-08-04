@@ -130,7 +130,7 @@ def find_data_file(name="intraday.csv"):
     # locate the data file relative to THIS script, not the working directory,
     # so the script runs the same from an IDE, a cron job, or any folder.
     # an explicit path on the command line (argv[1]) always wins.
-    if len(sys.argv) > 1 and sys.argv[1] not in ("mc", "validate", "full"):
+    if len(sys.argv) > 1 and sys.argv[1] not in ("mc", "validate", "full", "detrend"):
         candidates = [sys.argv[1]]
     else:
         here = os.path.dirname(os.path.abspath(__file__))
@@ -589,6 +589,74 @@ def terciles_by(values, labels=("calm     ", "mid      ", "turbulent")):
             (labels[2], values > cut2)]
 
 
+def detrend_study():
+    # VIX1D climbs through the session because its 24-hour window rolls onto the
+    # overnight gap and tomorrow, not because variance is rising. that climb hands
+    # the vega term a drift by construction. remove it and see what survives.
+    global THETA
+    dates, prices, variances = load_days(find_data_file())
+    ndays = len(prices)
+    nbars = len(prices[0])
+    V = np.array(variances)
+    levels = 100.0 * np.sqrt(V)
+    mean_path = levels.mean(axis=0)
+
+    print()
+    print(f"=== VIX1D INTRADAY ROLL ({ndays} days) ===")
+    print("  average level through the session, and how much of the index's")
+    print("  24-hour window actually overlaps the expiring contract's remaining life:")
+    for b in [0, 12, 24, 39, 48, 60, 77]:
+        clock = 30 + 5 * b
+        overlap = (390 - 5 * b) / 1440.0
+        print(f"    bar {b:2d} ({9 + clock // 60:02d}:{clock % 60:02d})  "
+              f"{mean_path[b]:6.2f} pts   overlap {100 * overlap:5.1f}%")
+    print(f"  open to close: {mean_path[0]:.2f} -> {mean_path[-1]:.2f} "
+          f"({mean_path[-1] - mean_path[0]:+.2f} pts)")
+
+    # additive in vol points, and multiplicative in variance
+    additive = np.maximum(levels - (mean_path - mean_path[0]), 1e-6) ** 2 / 1e4
+    multiplicative = V * ((mean_path[0] / mean_path) ** 2)
+
+    for name, Vx in [("baseline", V), ("additive", additive),
+                     ("multiplicative", multiplicative)]:
+        lv = 100 * np.sqrt(Vx)
+        net = lv[:, -1] - lv[:, 0]
+        THETA = float(np.mean(Vx))
+        totals, pnls = run_all(prices, [Vx[i] for i in range(ndays)], 1)
+        g = gross_shares(totals)
+        v = variance_shares(totals, pnls)
+        vega = mean_stats(totals['vega'])
+        gamma = mean_stats(totals['gamma'])
+        pnl = mean_stats(pnls)
+        dt = ONE_DAY / (nbars - 1)
+        realized = np.array([float(np.sum(np.diff(S) ** 2)) for S in prices])
+        modelled = np.array([float(np.sum(Vx[i][:-1] * prices[i][:-1] ** 2 * dt))
+                             for i in range(ndays)])
+        print()
+        print(f"=== {name.upper()} ===")
+        print(f"  theta {THETA:.6f}   net move: mean {net.mean():+.2f} pts, "
+              f"sd {net.std(ddof=1):.2f}, up on {int((net > 0).sum())}/{ndays} days")
+        print(f"  vega  t_NW {vega['t_nw']:+.2f}   gamma t_NW {gamma['t_nw']:+.2f}   "
+              f"pnl t_NW {pnl['t_nw']:+.2f}")
+        moves = np.abs(net)
+        by_tercile = " / ".join(
+            f"{mean_stats(totals['vega'][keep])['t_nw']:+.1f}"
+            for _, keep in terciles_by(moves))
+        print(f"  vega t_NW by tercile: {by_tercile}")
+        print(f"  model QV / realized QV = {modelled.mean() / realized.mean():.2f}x "
+              f"(exceeds on {int((modelled > realized).sum())}/{ndays})")
+        print(f"  gamma {g['gamma']:.1f}% gross / {v['gamma']:+.1f}% variance   "
+              f"vega {g['vega']:.1f}% / {v['vega']:+.1f}%")
+        print(f"  gross residual {residual_pct(totals, pnls):.1f}%   "
+              f"unexplained variance {v['residual']:+.1f}%", flush=True)
+
+    print()
+    print("  The roll accounts for the vega drift and for nothing else: removing it")
+    print("  collapses that drift while leaving the attribution shares in place.")
+    print("  Reported as robustness, not as the baseline -- the adjustment is built")
+    print("  from the whole sample, so it was not available in real time.")
+
+
 def main(full=False):
     global THETA, KAPPA, XI
     dates, prices, variances = load_days(find_data_file())
@@ -748,5 +816,7 @@ if __name__ == "__main__":
         pricer_validation()
     elif len(sys.argv) > 1 and sys.argv[1] == "full":
         main(full=True)
+    elif len(sys.argv) > 1 and sys.argv[1] == "detrend":
+        detrend_study()
     else:
         main()
