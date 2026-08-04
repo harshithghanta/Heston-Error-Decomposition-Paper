@@ -15,12 +15,18 @@
 Zero Days to Expiration Options (0DTE) have increased in popularity since CBOE released daily SPY expirations in 2022. However, they are
 difficult to hedge, and the sources of hedging error are not well understood. This paper takes the Heston model as a starting point
 and uses an industry-standard Greek-by-Greek decomposition to measure how much each Greek moves the profit and loss of an
-at-the-money delta hedge rebalanced at five-minute intervals. Shares are reported as gross absolute attribution shares computed
-from model Greeks: because terms offset within a day, they measure the size of each term's contribution and not a signed split of
-the realized hedging error. On that measure Gamma dominates, absorbing both diffusion convexity and any jump risk the model
-cannot identify. On the days when the VIX travels furthest intraday, Vega's share rises from $1\%$ to $11\%$ while Gamma's falls
-from $94\%$ to $82\%$ when $\epsilon$ = 0.5. The hedge also loses money persistently, by $14.4$ standard errors of the mean, because the
-$\mathrm{VIX}^2$ variance fed to the model runs about three times the variance the underlying realizes.
+at-the-money delta hedge rebalanced at five-minute intervals, with the variance state read from Cboe's VIX1D index, which is
+horizon-matched to a 0DTE contract. Shares are reported two ways: as a signed decomposition of the variance of the realized hedged
+P\&L, which is the primary measure, and as gross absolute attribution shares computed from model Greeks, which measure the size of
+each term's contribution rather than a split of the realized error. On the variance measure Gamma carries $64.6\%$ and Vega
+$31.5\%$; the two together account for almost all of the variance of the hedged P\&L, leaving $5.9\%$ unexplained, and every other
+term sits within sampling error of zero. The two largest terms correlate at $\rho = +0.27$ across days, with a $95\%$ interval that
+includes zero, so there is no evidence that they cancel within a day. Gamma dominates, absorbing both diffusion convexity and any jump
+risk the model cannot identify; a bipower-variation test flags $12$ of the $57$ days as containing jumps, and Gamma's share is
+unchanged on the jump-free subsample. On the days when VIX1D travels furthest intraday, Vega's gross share rises from $19.7\%$ to
+$42.8\%$. The hedged P\&L drifts negative but not significantly so, at $1.9$ Newey--West standard errors of the mean; the drift
+that does appear term by term is a property of the variance proxy rather than a risk premium, since the model's variance exceeds
+realized variance on $51$ of $57$ days while VIX1D itself rises mechanically through the session on $55$ of $57$.
 
 \end{abstract}
 
@@ -28,11 +34,14 @@ $\mathrm{VIX}^2$ variance fed to the model runs about three times the variance t
 \section{Introduction}
 This paper investigates the Greeks as sources of discrete hedging error for at-the-money 0DTE options under Heston.
 It takes the standard compensated-Greek decomposition of a delta-hedged option's profit and loss and applies it to
-at-the-money 0DTE calls, hedged at five-minute frequency on real SPY data. The contribution is a term-by-term measurement of how
-much each Greek moves the hedged profit and loss, and how that ranking shifts with the volatility regime. The measure is a gross
-absolute attribution share rather than a signed decomposition of the realized error, a distinction developed in
-Section~\ref{sec:results}. Gamma dominates in every regime, but the balance between Gamma and Vega swings from roughly $94/1$ to
-$82/11$ across terciles of intraday VIX movement, a sort whose endogeneity is discussed alongside the result.
+at-the-money 0DTE calls, hedged at five-minute frequency on real SPY data with the variance state taken from the VIX1D index. The
+contribution is a term-by-term measurement of how much each Greek moves the hedged profit and loss, and how that ranking shifts
+with the volatility regime. Two measures are reported and they answer different questions: a signed decomposition of the variance
+of the realized hedged P\&L, which is the primary measure, and a gross absolute attribution share, which records how much a term
+moves without regard to whether that movement survives into the realized error. The distinction is developed in
+Section~\ref{sec:results}. Gamma dominates in every regime; what the volatility regime changes is Vega, which becomes a material
+source of variance in the hedged P\&L on the days VIX1D travels furthest, and which also acquires a drift that Section~\ref{sec:results}
+attributes to the proxy rather than to the market. The endogeneity of that sort is discussed alongside the result.
 
 \subsection{Black--Scholes Model and Greeks}
 The Black--Scholes model, introduced by Fischer Black and Myron Scholes (1973)~\cite{blackscholes1973} and Robert Merton (1973)~\cite{merton1973},
@@ -53,21 +62,25 @@ sensitivities of the option price to various parameters. They are listed below:
 \end{itemize}
 
 
-\section{Background}
 \subsection{Related Literature}
 
 
 The decomposition in this paper relies heavily on various prior works. The Heston model \cite{heston1993}
 is used as the underlying model for the option pricing and hedging found later in the paper. Along with that, the Euler--Maruyama
 scheme \cite{Maruyama1955}, in the standard form given by Kloeden and Platen~\cite{kloedenplaten1992}, is used to simulate the
-stochastic differential equations used in the implementation of the paper. The Greek decomposition is based on Bergomi's work \cite{bergomi2016}, which is used to decompose the hedging error into its
-various components. Specifically, his ``break-even'' logic is used to attribute the hedging error to each Greek.
+stochastic differential equations used in the implementation of the paper. The Greek decomposition follows Bergomi~\cite{bergomi2016}. Four of the seven terms used here are his, the Gamma, Volga, Vanna, and Vega terms, as is the compensator method that subtracts from each term the drift it earns under the model, so that what is left is the break-even quantity. The three remaining terms, Charm, Veta, and time convexity, are of order $\Delta t$ and are the 0DTE-specific addition: they are negligible at the maturities Bergomi treats, but the expansion here is carried to second order across a single session, where they do not vanish.
+Specifically, his ``break-even'' logic is used to attribute the hedging error to each Greek.
 Bergomi's logic is the implied vs. realized volatility, where dominating volatility leads to price dominating the true price, and the Gamma variance drives the hedging error.
 This implied-versus-realized logic was formalized by El~Karoui, Jeanblanc-Picqu\'e, and Shreve (1998)~\cite{elkaroui1998}, who show that the P\&L of a delta hedge run at the wrong volatility is the dollar-Gamma-weighted spread between the hedging and realized variances.
+Bakshi and Kapadia (2003)~\cite{bakshi2003} take that spread to the data, running delta-hedged S\&P 500 option positions over horizons of days to months and finding their gains systematically negative, which they read as evidence of a negative market volatility risk premium. The single-session analogue is measured in Section~\ref{sec:results} and does not reproduce it: the mean daily hedged P\&L is negative but statistically insignificant, and the drifts that do appear term by term are traced there to the variance proxy rather than to a premium.
+% TODO(HG): this replaces the old claim that the 0DTE loss inherits Bakshi-Kapadia. With the
+% VIX1D data the drift is -1.9 NW SE and both large term drifts are proxy artifacts, so the
+% inheritance claim was no longer supportable. Reword in your own voice if you want it softer
+% or want to keep more of the lineage.
 
 The result that discrete-hedging error scales as $\frac{1}{\sqrt{N}}$, where $N$ is the number of rebalances, originates with
 Boyle and Emanuel (1980)~\cite{boyleemanuel1980}, who derive the variance of the hedging error of a discretely adjusted option
-position. Kamal \cite{kamal1999} is the practitioner treatment of that result and the closest antecedent to this paper: a guide to
+position. Derman and Kamal \cite{kamal1999} give the practitioner treatment of that result and the closest antecedent to this paper: a guide to
 hedging errors when one cannot hedge continuously, written for a trading desk rather than for a journal. Bertsimas--Kogan--Lo
 \cite{bertsimas2000} approach the same problem independently and from the continuous-time side,
 finding that discrete tracking error grows with the granularity constant, $g$, which is built from accumulated dollar gamma. The formal contribution of Bertsimas et al. is
@@ -208,12 +221,12 @@ the stock, as most 0DTE hedgers do, so the Vega term tracks unhedged risk rather
 \subsection{Methodology}
 \label{sec:methodology}
 The Heston parameters were not calibrated to data: apart from $\eta$, they are round, arbitrarily chosen values.
-$\eta$ was set from the VIX-implied variance in the sample. Given that information, the results in the
+$\eta$ was set from the VIX1D-implied variance in the sample. Given that information, the results in the
 next section are not to be taken as absolute, but rather as a proof of concept. The parameters used are as follows:
 \begin{itemize}
     \item $\kappa = 3.0$ (rate of mean reversion)
-    \item $\eta = 0.04$ (long-run variance; the sample average of $(\mathrm{VIX}/100)^2$ is $0.035$, rounded)
-    \item $\epsilon = 0.5$ (volatility of volatility)
+    \item $\eta = 0.0160$ (long-run variance; the sample average of $(\mathrm{VIX1D}/100)^2$ across the 57 days)
+    \item $\epsilon = 1.0$ (volatility of volatility)
     \item $\rho = -0.7$ (correlation between asset and variance)
     \item $\lambda = 0$ (market price of volatility risk)
     \item $r = 0.045$ (risk-free rate, used in the financing term of the hedged P\&L)
@@ -224,10 +237,18 @@ Section~\ref{sec:results} reports a sweep over both. The mean-reversion rate $\k
 close to inert on this horizon: it enters only through $\nu_{\mathrm{Q}}\,\Delta t = \kappa(\eta - v)\,\Delta t$, which for
 $\kappa = 3$ and a five-minute step is of order $10^{-6}$, against a typical per-bar $\Delta v$ two orders
 of magnitude larger. The vol-of-vol $\epsilon$ has no such protection, since it scales the Volga
-compensator as $\epsilon^2 v\,\Delta t$ and the Vanna compensator as $\rho\epsilon v S\,\Delta t$.
+compensator as $\epsilon^2 v\,\Delta t$ and the Vanna compensator as $\rho\epsilon v S\,\Delta t$. The baseline is set at
+$\epsilon = 1.0$ rather than at the lower $\epsilon = 0.5$ deliberately. Calibrated short-horizon index vol-of-vol is
+commonly well above $0.5$, and the sweep in Section~\ref{sec:results} shows that the low value is the one most
+flattering to the headline Gamma share, so reporting it as the baseline would overstate the result. The sample itself
+supports the choice: regressing the VIX1D variance increments in the form $\Delta v/(\sqrt{v}\sqrt{\Delta t})$ gives a
+realized vol-of-vol of $\hat{\epsilon} = 0.90$, close to the chosen baseline and nowhere near $0.5$. The same exercise
+gives a realized price--variance correlation of $\hat{\rho} = -0.73$ against the assumed $-0.7$, so of the two
+uncalibrated diffusion parameters $\rho$ turns out to have been guessed well and $\epsilon$ badly.
 
-Five-minute SPY data was used as a proxy for the underlying asset; the pipeline rescales each day to open at 1, so the results are invariant to the units of the price series. The sample covers 56 trading days, from March 31st, 2026 through June 18th, 2026.
-That window contains every regular NYSE session in the range apart from Good Friday and Memorial Day, which is where the count of 56 comes from.
+Five-minute SPY data was used as a proxy for the underlying asset; the pipeline rescales each day to open at 1, so the results are invariant to the units of the price series. The sample covers 57 trading days, from May 11th, 2026 through July 31st, 2026.
+That window holds 60 weekdays, of which Memorial Day, Juneteenth, and the observed Independence Day holiday are closed, which is where the count of 57 comes from.
+The window is set by data availability rather than by choice: the intraday feed serves five-minute index data only for the trailing sixty trading days, so a longer or earlier sample is not obtainable from this source.
 The option prices were computed using the Heston model, and the hedging error was measured by rebalancing the delta hedge at each five-minute bar.
 The contributions of each Greek to the overall hedged profit and loss were then analyzed and their results are found
 in the following section. Better data would use actual option pricing instead of proxies, but option data is expensive and currently a limitation
@@ -250,7 +271,7 @@ can introduce numerical instability in the integrals, as the integrands can beco
 
 Two distinct experiments appear below, and the distinction governs how each residual should be read. The empirical study of
 Section~\ref{sec:results} is not simulated at all: $\Delta S$ is the realized five-minute change in the observed underlying and
-$\Delta v$ is the realized change in the squared VIX. The validation of Section~\ref{sec:validation} is simulated, using the
+$\Delta v$ is the realized change in the squared VIX1D. The validation of Section~\ref{sec:validation} is simulated, using the
 Euler--Maruyama scheme to generate paths from the Heston dynamics.
 
 On the simulated paths the price is carried in levels rather than log prices. An Euler step
@@ -261,52 +282,61 @@ truncation itself, so any residual left in the \emph{simulated} test reflects se
 between how the paths were generated and how the error was decomposed. A log-Euler step would reintroduce such a mismatch through
 the $-\frac{1}{2}v$ Itô correction, which the level scheme does not carry.
 
-No such guarantee is available on real data, and the gap is large. There $\Delta S$ is whatever the market did, while
-$vS^2\,\Delta t$ is built from a VIX-derived variance that was never fitted to the realized path. Summed within each day, the
-realized quadratic variation $\sum (\Delta S)^2$ averages $4.38 \times 10^{-5}$ across the sample, against
-$1.41 \times 10^{-4}$ for the model's $\sum v S^2\,\Delta t$. The model quantity is roughly three times the realized one, and it
-exceeds it on 53 of the 56 days. The Gamma compensator is therefore not mean-zero on the empirical sample but reliably negative,
-and because an at-the-money call is long Gamma the decomposition's largest term carries a systematic negative drift. The residual
-reported in Section~\ref{sec:results} accordingly mixes second-order Taylor truncation with error in the variance proxy, and the
-two residuals in this paper measure different things and should not be compared directly.
+No such guarantee is available on real data, though the gap narrows considerably once the variance proxy is horizon-matched. There
+$\Delta S$ is whatever the market did, while $vS^2\,\Delta t$ is built from a VIX1D-derived variance that was never fitted to the
+realized path. Summed within each day, the realized quadratic variation $\sum (\Delta S)^2$ averages $4.75 \times 10^{-5}$ across
+the sample, against $6.32 \times 10^{-5}$ for the model's $\sum v S^2\,\Delta t$. The model quantity is about a third larger than
+the realized one, and it exceeds it on 51 of the 57 days. The Gamma compensator is therefore not mean-zero on the empirical sample
+but reliably negative, and because an at-the-money call is long Gamma the decomposition's largest term carries a systematic
+negative drift. The residual reported in Section~\ref{sec:results} accordingly mixes second-order Taylor truncation with error in
+the variance proxy, and the two residuals in this paper measure different things and should not be compared directly.
 
 
-The variance path is read off the VIX, which is a proxy in two respects. First, $\mathrm{VIX}^2$ is a
-risk-neutral quantity rather than a physical one, and it embeds a variance risk premium that the model,
-with $\lambda = 0$, does not capture. Second, and more consequentially,
-$\mathrm{VIX}^2$ is the expected \emph{average} variance over the coming thirty days, whereas the model
-calls for the instantaneous spot variance $v_t$. Because variance mean-reverts, a thirty-day forward
-average is pulled toward the long-run level and barely moves intraday, so the variance terms are only
-lightly exercised on real data. Cboe's
-VIX1D index, introduced in 2023 and computed from zero- to one-day SPY options~\cite{cboe2023vix1d}, is the horizon-matched
-measure and should replace the VIX in future work.
+The variance path is read off Cboe's VIX1D index, introduced in 2023 and computed from zero- to one-day SPY
+options~\cite{cboe2023vix1d}. The choice is deliberate and it matters. The thirty-day VIX is the wrong horizon for this
+experiment: $\mathrm{VIX}^2$ is the expected \emph{average} variance over the coming thirty days, whereas the model calls for the
+instantaneous spot variance $v_t$, and because variance mean-reverts a thirty-day forward average is pulled toward the long-run
+level and barely moves within a session. Used as $v_t$ it leaves the Vega, Vanna, and Volga terms only lightly exercised, and it
+overstates the variance an expiring contract actually faces. VIX1D is matched to the maturity the 0DTE option lives on and moves
+freely intraday, and the results below are built on it.
 
-This paper does not perform the VIX1D substitution. The expected effect is directional and stateable: a
-horizon-matched variance proxy would move intraday, activating the Vega, Vanna, and Volga terms that the
-thirty-day VIX suppresses, and would remove the roughly threefold gap between model and realized variance,
-shrinking the systematic negative drift in the Gamma compensator. Both effects push in the same direction:
-Gamma's share should fall from the level reported here, and the drift documented in
-Section~\ref{sec:results} should attenuate or vanish. The rerun is a test of this paper's central number,
-and it is the first thing that should be done.
+Two caveats attach to the substitution, one inherited and one new. The inherited one is that $\mathrm{VIX1D}^2$ remains a
+risk-neutral quantity rather than a physical one, and it embeds a variance risk premium that the model, with $\lambda = 0$, does
+not capture. The new one is specific to the one-day horizon and is the more serious of the two. VIX1D measures expected variance
+over the coming twenty-four hours, so as a session advances its window rolls off the remainder of today and onto the overnight gap
+and the following session. For a contract expiring at today's close the remaining variance should decay toward zero over the
+session; VIX1D instead climbs, averaging $10.90$ at 09:30 and $13.93$ at 15:55 across the sample, rising on 55 of the 57 days at a
+Newey--West $t$ of $+8.5$. The index is horizon-matched in name, but its intraday path carries a deterministic roll-up that the
+model reads as genuine variance news. Section~\ref{sec:results} shows that this roll is what gives the Vega term its drift, and the
+drift should be read as a property of the proxy rather than of the market. Detrending the roll, or building a proxy that
+interpolates the term structure down to the actual remaining maturity, is the natural correction and is left to future work.
+% TODO(HG): decision needed. Two options I did not take for you:
+%   (a) scope-only, which is what is written above -- name the roll, attribute the Vega drift to it, move on.
+%   (b) actually detrend: subtract the sample-average intraday VIX1D path before computing dv, and rerun.
+% Option (b) is a real result rather than a caveat, but it changes Table 1 again and needs your sign-off on
+% the detrending choice. Also: if you want the paper to SHOW the 30-day VIX contrast rather than argue it,
+% fetch_data.py has to pull vix_close alongside vix1d_close again -- the current intraday.csv dropped it,
+% so no VIX-vs-VIX1D comparison in this draft is reproducible from the shipped data.
 
-\subsection{Validation}
+\section{Validation \& Results}
 \label{sec:validation}
 According to Bertsimas, Kogan, and Lo (2000)~\cite{bertsimas2000}, the granularity constant $g$, which measures how difficult an option is to hedge
 in discrete time and sets the size of the tracking error, blows up in the terminal interval. The Taylor expansion also
-fails as the option approaches expiry, which is one candidate explanation for the 9\% residual reported in the next subsection.
+fails as the option approaches expiry, which is one candidate explanation for the $20.2\%$ gross residual reported in the next subsection.
 
 The decomposition algebra itself was checked away from that corner. A 60-day option was simulated under the Heston engine and
 hedged daily, with the position closed 20 days before expiry so that no step straddles the payoff kink and every Greek stays
-smooth; there the seven terms reproduced the simulated hedged P\&L to within 2.35\%, at a correlation of 0.9997. That is a test of
+smooth; there the seven terms reproduced the simulated hedged P\&L to within $1.74\%$, at a correlation of $0.9998$. That is a test of
 whether the expansion is correct, and it passes.
 
 The terminal-interval explanation was then tested directly, and on the real data rather than by analogy to the 60-day run. The
-same 56 days were hedged the same way, but the position was closed a number of bars before the bell and marked out at the pricer
+same 57 days were hedged the same way, but the position was closed a number of bars before the bell and marked out at the pricer
 value instead of being held into expiry; every other element of the experiment is unchanged, so distance from expiry is the only
-thing that varies. The residual falls monotonically and steeply as the position is closed earlier: $9.0\%$ held to expiry,
-$8.1\%$ closed one five-minute bar early, $7.7\%$ two bars early, $7.2\%$ three bars early, $5.8\%$ half an hour early, $4.7\%$
-one hour early, and $4.0\%$ two hours early. Closing merely one bar before the bell removes almost a percentage point of residual,
-and closing thirty minutes early removes more than a third of it. The residual is therefore concentrated in the final intervals,
+thing that varies. The gross residual falls monotonically and steeply as the position is closed earlier: $20.2\%$ held to expiry,
+$17.7\%$ closed one five-minute bar early, $17.0\%$ two bars early, $16.0\%$ three bars early, $14.0\%$ half an hour early, $10.5\%$
+one hour early, and $6.2\%$ two hours early. Closing merely one bar before the bell removes two and a half points of residual,
+closing thirty minutes early removes nearly a third of it, and closing two hours early removes better than two thirds. The
+unexplained variance share falls along the same ladder, from $5.9\%$ held to expiry to $1.0\%$ two hours early. The residual is therefore concentrated in the final intervals,
 exactly as the granularity constant blowing up in the terminal interval would predict. This is a controlled version of the
 comparison the 60-day run could only gesture at: the maturity, hedge frequency, and data source are all held fixed, so the fall
 can be attributed to distance from expiry alone.
@@ -319,74 +349,101 @@ test above is the controlled statement; the 60-day run is corroborating context.
 
 
 
-\subsection{Results and Testing}
+\subsection{Results}
 \label{sec:results}
-The decomposition was tested on 56 full trading days of five-minute data (78 bars per day, so 77 hedge intervals). Each day is rescaled to open at 1, the variance path is read off the squared VIX, and the option is a fresh at-the-money 0DTE call re-formed each morning and delta-hedged at every bar. Summing the seven compensated terms reproduces the realized hedged P\&L to within a $9\%$ residual, defined as the mean absolute unexplained P\&L across the 56 days divided by the mean absolute daily P\&L. The mean daily hedged P\&L is $-0.00235$ in the units where the underlying opens at 1, with a standard deviation across days of $0.00122$.
+The decomposition was tested on 57 full trading days of five-minute data (78 bars per day, so 77 hedge intervals). Each day is rescaled to open at 1, the variance path is read off the squared VIX1D, and the option is a fresh at-the-money 0DTE call re-formed each morning and delta-hedged at every bar. Summing the seven compensated terms reproduces the realized hedged P\&L to within a $20.2\%$ gross residual, defined as the mean absolute unexplained P\&L across the 57 days divided by the mean absolute daily P\&L. That metric is the harsher of the two reported here; measured against the \emph{variance} of the realized hedged P\&L, which is the decomposition the rest of this section leads with, the unexplained share is $5.9\%$. The mean daily hedged P\&L is $-0.00019$ in the units where the underlying opens at 1, with a standard deviation across days of $0.00087$.
 
-That mean is not a sampling artifact. With a standard deviation of $0.00122$ across $D = 56$ days, the standard error of the mean is $0.00016$, placing the average daily loss $14.4$ standard errors below zero; 53 of the 56 days lose money. A delta hedge run on this data loses persistently rather than occasionally. The source is the variance input, measured in Section~\ref{sec:methodology}: $\mathrm{VIX}^2$ is a risk-neutral quantity carrying a variance risk premium, while $\lambda = 0$ gives the model a physical variance drift, so the $vS^2\,\Delta t$ subtracted inside the Gamma compensator runs about three times the variance the underlying actually realized and exceeds it on the same 53 days. An at-the-money call is long Gamma, so the position pays that spread on almost every day in the sample. The drift is the variance risk premium, arriving through the Gamma term rather than through Vega.
+That mean is not statistically distinguishable from zero, and the reason it is not is more informative than the mean itself. Daily P\&L is serially dependent on this sample, with a Ljung--Box $Q(10)$ of $25.9$ ($p = 0.004$), so the independent-sampling standard error understates uncertainty and all inference below uses Newey--West errors at the automatic lag $L = 3$. With a standard deviation of $0.00087$ across $D = 57$ days the Newey--West standard error of the mean is $0.00010$, placing the average daily loss $1.9$ standard errors below zero, which does not clear conventional significance; 40 of the 57 days lose money. The hedge does not lose persistently on this data.
 
-Table~\ref{tab:attribution} reports each term's size. The percentages are gross absolute model-attribution shares: each term's average absolute daily contribution as a fraction of the sum across all seven terms, computed from model Greeks. This measure deserves emphasis, because it is weaker than the phrase ``where the error goes'' suggests. Terms can and do offset within a day, so a share here says how much a term \emph{moves}, and not how much of the realized hedging error it accounts for. A signed decomposition, in which the seven contributions are attributed to the realized error with their signs intact and made to sum to it, would support the stronger claim; this paper does not construct one. In the table, Vega, Vanna, Volga, and Veta denote derivatives with respect to the variance $v$, not the volatility $\sigma$ of Section~1; the two are related by chain rule but are not numerically identical. The overall shares carry a percentile-bootstrap 95\% interval over days ($B = 10{,}000$ resamples of the 56 days, shares recomputed on each). The shares are reported first over all days, then split into three regimes by how far the VIX travelled intraday, measured in VIX index points.
+Two large term-level drifts sit underneath that null, and they nearly cancel. The Gamma term averages $-4.58 \times 10^{-4}$ per day at a Newey--West $t$ of $-6.2$, negative on 49 of 57 days, and the Vega term averages $+3.77 \times 10^{-4}$ at $t = +6.5$, positive on 45. Neither is a risk premium. The Gamma drift is the variance input, measured in Section~\ref{sec:methodology}: the $vS^2\,\Delta t$ subtracted inside the Gamma compensator runs about a third larger than the variance the underlying actually realized and exceeds it on 51 of the 57 days, and an at-the-money call is long Gamma, so the position pays that spread on most days in the sample. The Vega drift is the VIX1D roll-up of Section~\ref{sec:methodology}: the proxy climbs through the session on 55 of 57 days, the Vega term is $\partial V/\partial v\,[\Delta v - \nu_{\mathrm{Q}}\Delta t]$, and a variance input that rises by construction hands that term a positive mean by construction. Both drifts are properties of the measurement rather than of the market, they point in opposite directions, and the near-zero net is the coincidence of two proxy errors rather than evidence that a 0DTE delta hedge breaks even. This sample cannot speak to the variance risk premium at all.
+% TODO(HG): the old version of this paragraph claimed the 0DTE hedge loses persistently at 14.4 SE and read
+% that loss as the variance risk premium arriving through Gamma. Neither survives the VIX1D data. What is
+% written above is the conservative reading -- both drifts are artifacts, the net is uninformative. If you
+% think the Gamma drift is still economically real (the risk-neutral/physical gap is a genuine premium even
+% at one day), that is an argument you can make, but it needs to be yours and it needs the roll-up caveat.
+
+Table~\ref{tab:attribution} reports each term two ways, and the two measures answer different questions. The \emph{variance share} is a signed decomposition of the variance of the realized hedged P\&L: term $i$'s share is $\mathrm{cov}(\text{term}_i,\,\Delta\Pi)/\mathrm{var}(\Delta\Pi)$, so the seven terms and the unexplained remainder sum to $100\%$ by construction and a term earns share only insofar as it moves \emph{with} the error actually realized. This is the measure that answers where the hedging error goes, and it is the primary one here. The \emph{gross share} is the model-attribution measure carried by earlier drafts of this work: each term's average absolute daily contribution as a fraction of the sum across all seven, computed from model Greeks. It is weaker than the phrase ``where the error goes'' suggests, because it records how much a term \emph{moves} and not how much of the realized error it accounts for; it is retained because it is the natural measure for the regime comparison, where the question is which Greek is being exercised rather than which is being realized.
+
+The gap between the two measures is where a naive reading goes wrong, and Vanna shows it plainly: it takes $9.2\%$ of the gross movement but a variance share of $-1.5\%$ with an interval spanning zero, so it moves without contributing to the error that is realized. Across the 57 days the Gamma and Vega terms correlate at $\rho = +0.27$, with a $95\%$ interval of $[-0.13,\,+0.58]$, so there is no evidence that the two terms carrying nearly all of the movement cancel within a day. The strongest offsetting pair anywhere in the matrix is Vega against Veta at $\rho = -0.71$, but Veta's daily standard deviation is smaller than Vega's by a factor of sixty-eight, so that cancellation is immaterial in P\&L terms. In the table, Vega, Vanna, Volga, and Veta denote derivatives with respect to the variance $v$, not the volatility $\sigma$ of Section~1; the two are related by chain rule but are not numerically identical. Both overall columns carry a percentile-bootstrap 95\% interval over days ($B = 10{,}000$ resamples of the 57 days, shares recomputed on each). The regime columns split the sample into three groups by how far VIX1D travelled intraday, measured in index points.
 
 \begin{table}[H]
 \centering
-\setlength{\tabcolsep}{4pt}
-\begin{tabular}{lrcrrr}
+\footnotesize
+\setlength{\tabcolsep}{3pt}
+\begin{tabular}{lrcrcrrr}
 \toprule
-Term & Overall & 95\% CI & Calm & Mid & Turbulent \\
+& \multicolumn{2}{c}{Variance share (\%)} & \multicolumn{2}{c}{Gross share (\%)} & \multicolumn{3}{c}{Gross by regime (\%)} \\
+\cmidrule(lr){2-3}\cmidrule(lr){4-5}\cmidrule(lr){6-8}
+Term & Share & 95\% CI & Share & 95\% CI & Calm & Mid & Turb. \\
 \midrule
-Gamma $\left(\frac{1}{2}\,\partial^2 V/\partial S^2\right)$          & 89.7 & [88.0,\,91.2] & 93.6 & 91.5 & 82.1 \\
-Vega $\left(\partial V/\partial v\right)$                            &  4.8 & [\phantom{0}3.6,\,\phantom{0}6.2] &  1.2 &  3.5 & 11.3 \\
-Vanna $\left(\partial^2 V/\partial S\,\partial v\right)$             &  2.3 & [\phantom{0}1.9,\,\phantom{0}2.9] &  2.2 &  2.0 &  3.0 \\
-Charm $\left(\partial^2 V/\partial S\,\partial t\right)$             &  1.5 & [\phantom{0}1.1,\,\phantom{0}1.9] &  1.5 &  1.3 &  1.7 \\
-Time convexity $\left(\frac{1}{2}\,\partial^2 V/\partial t^2\right)$ &  1.3 & [\phantom{0}0.9,\,\phantom{0}1.7] &  1.2 &  1.3 &  1.4 \\
-Volga $\left(\frac{1}{2}\,\partial^2 V/\partial v^2\right)$          &  0.2 & [\phantom{0}0.2,\,\phantom{0}0.3] &  0.3 &  0.2 &  0.2 \\
-Veta $\left(\partial^2 V/\partial v\,\partial t\right)$              &  0.1 & [\phantom{0}0.1,\,\phantom{0}0.1] &  0.0 &  0.1 &  0.2 \\
+Gamma $\left(\frac{1}{2}\partial^2 V/\partial S^2\right)$          & 64.6 & [52.2,\,73.9] & 50.0 & [45.4,\,54.6] & 62.9 & 46.9 & 44.9 \\
+Vega $\left(\partial V/\partial v\right)$                          & 31.5 & [17.5,\,43.8] & 34.7 & [30.4,\,39.3] & 19.7 & 35.3 & 42.8 \\
+Vanna $\left(\partial^2 V/\partial S\partial v\right)$             & $-1.5$ & [$-9.2$,\,7.0] &  9.2 & [\phantom{0}7.4,\,11.0] & 10.1 & 10.5 &  7.7 \\
+Volga $\left(\frac{1}{2}\partial^2 V/\partial v^2\right)$          & $-1.8$ & [$-2.9$,\,$-0.8$] &  2.0 & [\phantom{0}1.6,\,\phantom{0}2.4] &  3.0 &  2.3 &  1.2 \\
+Charm $\left(\partial^2 V/\partial S\partial t\right)$             &  1.3 & [\phantom{0}0.2,\,\phantom{0}2.5] &  1.8 & [\phantom{0}1.3,\,\phantom{0}2.4] &  1.4 &  2.3 &  1.7 \\
+Time conv.\ $\left(\frac{1}{2}\partial^2 V/\partial t^2\right)$    &  0.3 & [$-0.4$,\,\phantom{0}1.0] &  1.6 & [\phantom{0}1.2,\,\phantom{0}2.0] &  2.5 &  2.0 &  0.8 \\
+Veta $\left(\partial^2 V/\partial v\partial t\right)$              & $-0.3$ & [$-0.5$,\,$-0.1$] &  0.7 & [\phantom{0}0.5,\,\phantom{0}0.8] &  0.4 &  0.6 &  0.8 \\
+\midrule
+Unexplained                                                        &  5.9 & ---           & ---  & ---           & ---  & ---  & ---  \\
 \bottomrule
 \end{tabular}
-\caption{Gross absolute model-attribution share of each decomposition term, in percent, as a fraction of the summed average absolute daily contributions. The interval is a percentile bootstrap over days ($B = 10{,}000$ resamples of the 56 days). Days are sorted into terciles by the absolute intraday change in the VIX, measured in VIX index points: calm ($n=19$, mean absolute change $0.12$ points), mid ($n=18$, $0.47$ points), and turbulent ($n=19$, $1.57$ points). Shares are rounded to one decimal, so a Veta share of $0.0$ in the calm bucket means below $0.05$, not zero.}
+\caption{Attribution of the hedged P\&L across the 57 days, in percent. The variance share is the signed decomposition $\mathrm{cov}(\text{term},\,\Delta\Pi)/\mathrm{var}(\Delta\Pi)$, so the seven terms plus the unexplained remainder sum to $100$. The gross share is each term's average absolute daily contribution as a fraction of the summed average absolute contributions across all seven terms, and by construction admits no remainder. Intervals are percentile bootstraps over days ($B = 10{,}000$ resamples of the 57 days). The regime columns are gross shares within terciles sorted by the absolute intraday change in VIX1D, measured in index points: calm ($n=19$, mean absolute change $0.90$ points), mid ($n=19$, $2.47$ points), and turbulent ($n=19$, $5.74$ points). The variance shares within those same terciles are given in the text and are not monotone.}
 \label{tab:attribution}
 \end{table}
 
-Gamma dominates in every regime, as one would expect of an option hedged only in the underlying: on a typical day roughly nine-tenths of the total absolute term movement sits in the $\frac{1}{2}\,\partial^2 V/\partial S^2$ term. The regime changes where the remaining tenth sits. On calm days Gamma carries $94\%$ and Vega barely $1\%$; on turbulent days Gamma's share falls to $82\%$ while Vega climbs to $11\%$, taking up almost all of the share Gamma gives up. Vanna, Charm, time convexity, Volga, and Veta stay within a few percent throughout, and by the bootstrap intervals in Table~\ref{tab:attribution} the Charm and time-convexity shares are too close to rank against each other.
+Gamma leads on both measures and in every regime, as one would expect of an option hedged only in the underlying, but it no longer dominates the way the thirty-day proxy made it appear: half the total absolute term movement and two-thirds of the realized P\&L variance sit in the $\frac{1}{2}\,\partial^2 V/\partial S^2$ term. Vega is the second term and it is not a minor one, taking $34.7\%$ of the gross movement and $31.5\%$ of the variance. A horizon-matched variance proxy moves enough within a session that the variance-facing part of the decomposition becomes a first-order object rather than a rounding error, and that is the single largest change from a thirty-day proxy.
 
-The regime pattern needs one caveat. The Vega term is $\partial V/\partial v\,[\Delta v - \nu_{\mathrm{Q}}\Delta t]$, so it is larger by construction on days when the variance proxy moved; sorting days by exactly that quantity and then observing that Vega's share rises is partly circular. To check that the swing is a feature of turbulent markets rather than of the sort, the same 56 days were re-sorted into terciles by the absolute intraday move in the underlying, $|\Delta S|$, a criterion that does not appear in the Vega term. The swing survives: Gamma runs $91.8\%$ to $84.1\%$ from the calmest to the most active tercile, and Vega $2.4\%$ to $9.9\%$. The effect is attenuated relative to the $|\Delta\mathrm{VIX}|$ sort but clearly present, so it is not an artifact of the sorting variable. The two sorts are not independent, correlating at $0.80$ on this sample, so this is a partial control rather than a clean one.
+What the regime changes is the balance between the two. Vega's gross share rises from $19.7\%$ on calm days to $42.8\%$ on turbulent ones while Gamma's falls from $62.9\%$ to $44.9\%$, and in the turbulent tercile the two are within about two points of each other. The signed reading does not track that sort cleanly. Vega's variance share goes $10.2\%$, $26.7\%$, $24.0\%$ across the terciles and Gamma's goes $77.2\%$, $65.5\%$, $73.9\%$: both move, neither is monotone, and with nineteen days per bucket the middle and turbulent figures are not separable. What does move monotonically is Vega's correlation with the realized P\&L, $+0.27$, $+0.69$, $+0.71$. Two claims carried by earlier drafts of this work do not survive the horizon-matched proxy and should be discarded. Vega's dispersion does not grow faster than Gamma's across the sort: its standard deviation across days grows by a factor of $1.4$ against Gamma's $1.5$. And its mean is no longer indistinguishable from zero, running at Newey--West $t$ of $-0.4$, $+9.0$, and $+9.7$ across the three buckets. That drift is the roll-up of Section~\ref{sec:methodology} rather than a market fact: the sort is on how far VIX1D travelled, VIX1D travels upward on 55 of 57 days, and so the turbulent bucket is disproportionately the bucket in which the proxy climbed most. Turbulence buys Vega a larger share of the movement; the accompanying drift is an artifact of how the variance was measured.
 
-The two remaining robustness questions are the mean-reversion rate $\kappa$ and the vol-of-vol $\epsilon$, both chosen rather than calibrated. Each was swept over three values with all other parameters and the data held fixed; Table~\ref{tab:sensitivity} reports both. The two behave very differently. Varying $\kappa$ across $\{1, 3, 5\}$ moves no share by as much as a tenth of a percentage point: the overall Gamma share is $89.7\%$ in all three cases and the turbulent-tercile split is unchanged. This confirms numerically what the magnitude argument of Section~\ref{sec:methodology} anticipated, that on a five-minute 0DTE horizon $\kappa$ enters only through the negligible $\nu_{\mathrm{Q}}\,\Delta t$ term and cannot affect the attribution. Varying $\epsilon$ across $\{0.5, 1.0, 2.0\}$ is a different story. Gamma remains the largest term by a wide margin, but its overall share is genuinely $\epsilon$-dependent, falling from $89.7\%$ at $\epsilon = 0.5$ to $79.2\%$ at $\epsilon = 2.0$. The share it sheds goes to Vanna and Volga, the cross- and second-variance terms that scale in $\epsilon$, and not to Vega, which stays near $4.5\%$ regardless. The regime pattern of Table~\ref{tab:attribution} is intact throughout: Gamma falls from the calm to the turbulent tercile and Vega rises to roughly 10 to 11 percent in the turbulent bucket in every row. The reconstruction residual is essentially unchanged by either parameter, at about $9\%$. Because calibrated short-horizon index vol-of-vol is commonly well above $0.5$, the honest reading of the headline is that Gamma carries roughly four-fifths to nine-tenths of the term movement, with the precise figure set by $\epsilon$ and not by $\kappa$.
+Vanna is the one term whose two measures disagree in sign, at $9.2\%$ gross against $-1.5\%$ of variance with an interval spanning zero: it is exercised without contributing to the realized error. Charm, time convexity, Volga, and Veta stay within a few percent on both measures throughout, and by the bootstrap intervals in Table~\ref{tab:attribution} the Charm and time-convexity shares are too close to rank against each other.
+
+The regime pattern needs one caveat, and it is sharper here than it was under a thirty-day proxy. The Vega term is $\partial V/\partial v\,[\Delta v - \nu_{\mathrm{Q}}\Delta t]$, so it is larger by construction on days when the variance proxy moved; sorting days by exactly that quantity and then observing that Vega's share rises is partly circular. To check that the swing is a feature of turbulent markets rather than of the sort, the same 57 days were re-sorted into terciles by the absolute intraday move in the underlying, $|\Delta S|$, a criterion that does not appear in the Vega term. The swing survives: Gamma's gross share runs $55.5\%$ to $42.3\%$ from the calmest to the most active tercile, and Vega's $30.6\%$ to $43.1\%$. The effect is attenuated relative to the $|\Delta\mathrm{VIX1D}|$ sort but clearly present, so it is not an artifact of the sorting variable. The control is also a better one than it was: the two sorts correlate at $0.55$ by Pearson and only $0.25$ by Spearman on this sample, against $0.80$ under the thirty-day proxy, so the underlying's move and the variance proxy's move are now close to independent orderings of the sample. The variance shares under the $|\Delta S|$ sort are again not monotone, at $71.4\%$, $39.4\%$, $71.4\%$ for Gamma and $13.9\%$, $48.5\%$, $43.8\%$ for Vega, which is a further reason to read the regime result as a statement about which Greek is exercised rather than about which carries the realized error.
+
+Because Heston carries no jump term, any intraday jump enters the decomposition only through $(\Delta S)^2$ and is absorbed into the Gamma term, so the Gamma share reported above is a diffusion-plus-jump quantity. Separating the two inside the term requires a jump model and is beyond this decomposition, but the contamination can be bounded from the same five-minute bars. Following Barndorff-Nielsen and Shephard (2006)~\cite{bnsjump2006}, realized variance $\sum r_i^2$ estimates total quadratic variation while bipower variation $\mu_1^{-2}\sum |r_i||r_{i-1}|$ is robust to finite-activity jumps, so their difference isolates the jump contribution; the ratio statistic is standardized by tri-power quarticity in the form given by Huang and Tauchen (2005)~\cite{huangtauchen2005}. On the 77 five-minute returns of each session the test flags 12 of the 57 days as containing jumps at the $5\%$ level and 3 at the $1\%$ level, and the average relative jump contribution $\max(RV - BV,\,0)/RV$ is $7.1\%$.
+
+Re-running the attribution on the 45 jump-free days alone leaves the result intact. Gamma's gross share is $50.6\%$ against $50.0\%$ on the full sample, Vega's $34.4\%$ against $34.7\%$, and the gross residual $19.9\%$ against $20.2\%$; on the variance measure Gamma takes $59.3\%$ against $64.6\%$ and Vega $33.3\%$ against $31.5\%$, with the unexplained share rising to $9.4\%$. Gamma's dominance is therefore not produced by the days on which jumps are detectable, and the headline survives on a clean subsample. Two limits on that conclusion should be stated. The subsample has 45 days rather than 57, so the intervals widen. More importantly the test discriminates weakly on this sample: the 12 flagged days on their own give a Gamma gross share of $47.8\%$, close to the jump-free figure, so the check bounds the contamination rather than demonstrating that jumps are irrelevant. What it rules out is the reading in which the Gamma share is an artifact of a handful of jump days.
+
+The two remaining robustness questions are the mean-reversion rate $\kappa$ and the vol-of-vol $\epsilon$, both chosen rather than calibrated. Each was swept over three values with all other parameters and the data held fixed; Table~\ref{tab:sensitivity} reports both. The two behave very differently. Varying $\kappa$ across $\{1, 3, 5\}$ moves no share by as much as a third of a percentage point: the overall Gamma gross share runs $49.9\%$, $50.0\%$, $50.2\%$ and the variance share is $64.6\%$ in all three cases. This confirms numerically what the magnitude argument of Section~\ref{sec:methodology} anticipated, that on a five-minute 0DTE horizon $\kappa$ enters only through the negligible $\nu_{\mathrm{Q}}\,\Delta t$ term and cannot affect the attribution. Varying $\epsilon$ across $\{0.5, 1.0, 2.0\}$ is a different story. Gamma remains the largest term throughout, but its gross share falls from $52.1\%$ at $\epsilon = 0.5$ to $41.5\%$ at $\epsilon = 2.0$ and its variance share from $69.1\%$ to $55.3\%$. The gross share it sheds goes to Vanna and Volga, the cross- and second-variance terms that scale in $\epsilon$. Vega's variance share is the one quantity in the table that $\epsilon$ leaves alone, sitting at $31.4\%$, $31.5\%$, and $30.8\%$ across the sweep even as its gross share drifts down from $36.1\%$ to $29.1\%$; the part of the realized error that Vega explains is a property of the data rather than of the vol-of-vol. The regime pattern of Table~\ref{tab:attribution} holds in every row, with Gamma falling and Vega rising from the calm to the turbulent tercile. The gross residual falls slightly as $\epsilon$ grows, from $21.6\%$ to $18.5\%$. The reading of the headline is that Gamma carries between two-fifths and one-half of the term movement and between five-ninths and seven-tenths of the realized variance, with the precise figure set by $\epsilon$ and not by $\kappa$, and that Vega is a stable second on the measure that matters.
 
 \begin{table}[H]
 \centering
-\begin{tabular}{lrrrrrrr}
+\small
+\setlength{\tabcolsep}{4pt}
+\begin{tabular}{lrrrrrrrr}
 \toprule
-& \multicolumn{4}{c}{Overall share (\%)} & \multicolumn{2}{c}{Turbulent (\%)} & Resid. \\
-\cmidrule(lr){2-5}\cmidrule(lr){6-7}
-& Gamma & Vega & Vanna & Volga & Gamma & Vega & (\%) \\
+& \multicolumn{4}{c}{Gross share (\%)} & \multicolumn{2}{c}{Var.\ share (\%)} & \multicolumn{2}{c}{Turb.\ gross (\%)} \\
+\cmidrule(lr){2-5}\cmidrule(lr){6-7}\cmidrule(lr){8-9}
+& Gamma & Vega & Vanna & Volga & Gamma & Vega & Gamma & Vega \\
 \midrule
-\multicolumn{8}{l}{\emph{Vary mean reversion $\kappa$ (with $\epsilon = 0.5$):}} \\
-\quad $\kappa = 1$   & 89.7 & 4.8 & 2.4 & 0.2 & 82.1 & 11.4 & 9.0 \\
-\quad $\kappa = 3$   & 89.7 & 4.8 & 2.3 & 0.2 & 82.1 & 11.3 & 9.0 \\
-\quad $\kappa = 5$   & 89.7 & 4.8 & 2.3 & 0.2 & 82.2 & 11.3 & 9.0 \\
+\multicolumn{9}{l}{\emph{Vary mean reversion $\kappa$ (with $\epsilon = 1.0$):}} \\
+\quad $\kappa = 1$     & 49.9 & 34.8 &  9.2 & 2.0 & 64.6 & 31.6 & 44.8 & 42.9 \\
+\quad $\kappa = 3$     & 50.0 & 34.7 &  9.2 & 2.0 & 64.6 & 31.5 & 44.9 & 42.8 \\
+\quad $\kappa = 5$     & 50.2 & 34.7 &  9.1 & 2.0 & 64.7 & 31.5 & 45.0 & 42.7 \\
 \midrule
-\multicolumn{8}{l}{\emph{Vary vol-of-vol $\epsilon$ (with $\kappa = 3$):}} \\
-\quad $\epsilon = 0.5$ & 89.7 & 4.8 & 2.3 & 0.2 & 82.1 & 11.3 & 9.0 \\
-\quad $\epsilon = 1.0$ & 86.7 & 4.6 & 4.7 & 1.2 & 78.9 & 10.9 & 8.9 \\
-\quad $\epsilon = 2.0$ & 79.2 & 4.3 & 9.3 & 4.7 & 71.4 & 10.0 & 8.9 \\
+\multicolumn{9}{l}{\emph{Vary vol-of-vol $\epsilon$ (with $\kappa = 3$):}} \\
+\quad $\epsilon = 0.5$ & 52.1 & 36.1 &  5.7 & 1.7 & 69.1 & 31.4 & 45.5 & 43.6 \\
+\quad $\epsilon = 1.0$ & 50.0 & 34.7 &  9.2 & 2.0 & 64.6 & 31.5 & 44.9 & 42.8 \\
+\quad $\epsilon = 2.0$ & 41.5 & 29.1 & 18.3 & 7.8 & 55.3 & 30.8 & 39.7 & 37.4 \\
 \bottomrule
 \end{tabular}
-\caption{Attribution shares as $\kappa$ and $\epsilon$ are each swept, with the other parameters and the data held fixed. $\kappa$ is inert: all three rows are identical to within a tenth of a percentage point. $\epsilon$ matters: Gamma cedes share to Vanna and Volga as it grows, while Vega is unmoved. The regime split (Gamma falling and Vega near 10 to 11 percent in the turbulent tercile) holds in every row, and the reconstruction residual stays near $9\%$ throughout. The $\kappa = 3$, $\epsilon = 0.5$ baseline is shared by both panels.}
+\caption{Attribution shares as $\kappa$ and $\epsilon$ are each swept, with the other parameters and the data held fixed. $\kappa$ is inert: all three rows agree to within a third of a percentage point, as the magnitude argument of Section~\ref{sec:methodology} predicts. $\epsilon$ matters for the gross measure, where Gamma cedes share to Vanna and Volga as it grows, but Vega's variance share is stable across the sweep at $31\%$. The regime split holds in every row. The gross residual runs $21.6\%$, $20.2\%$, and $18.5\%$ down the $\epsilon$ panel and is unchanged by $\kappa$. The $\kappa = 3$, $\epsilon = 1.0$ baseline is shared by both panels.}
 \label{tab:sensitivity}
 \end{table}
 
 \subsection{Limitations and Future Work}
 Four limits on the scope of these results should be stated plainly. The option studied is at the money at inception on every one
-of the 56 days, so the attribution is an at-the-money result and does not carry to the out-of-the-money strikes that make up much
+of the 57 days, so the attribution is an at-the-money result and does not carry to the out-of-the-money strikes that make up much
 of 0DTE volume. The at-the-money case was chosen deliberately: it is where dealer gamma exposure concentrates~\cite{dimeraker2023},
 where the hedging problem is most acute, and where the Gamma-dominance result is most cleanly interpretable. Out-of-the-money
 strikes, which carry proportionally more Vega and Vanna, are left to future work. The parameters are a single uncalibrated set;
-the $\kappa$ and $\epsilon$ sweeps of Section~\ref{sec:results} show Gamma stays dominant throughout but that its precise share depends on $\epsilon$,
-and no sweep over $\eta$, $\rho$, or $\lambda$ was attempted. The variance path is a thirty-day risk-neutral proxy standing in for an
-instantaneous physical variance, and it runs about three times the realized intraday variance, which flatters the Gamma share
-rather than merely muting the variance terms. Finally, the attribution metric is a gross absolute share, so it measures the size
-of each term's movement and not a signed split of the realized error.
+the $\kappa$ and $\epsilon$ sweeps of Section~\ref{sec:results} show Gamma stays largest throughout but that its precise share depends on $\epsilon$,
+and no sweep over $\eta$, $\rho$, or $\lambda$ was attempted. The variance path is a one-day risk-neutral proxy standing in for an
+instantaneous physical variance: it runs about a third above the realized intraday variance, which flatters the Gamma share, and
+it carries the intraday roll-up documented in Section~\ref{sec:methodology}, which manufactures the Vega term's drift. Neither
+distortion is removed here, and correcting the second is the most valuable next step this paper can name. Finally, the two
+attribution metrics measure different things and neither is complete on its own: the gross share records the size of a term's
+movement without regard to the realized error, while the variance share records covariance with the realized error and so is
+silent about terms that move a great deal without contributing to it.
 
 The model is limited by the accuracy of the Heston parameters, an issue one can easily fix with better data. Another limitation is found in the premise itself:
 all Greeks are unhedgeable in the terminal interval, because there exists no rebalance prior to expiry. Given that, market makers and retail traders alike should be
@@ -397,17 +454,27 @@ representation of the underlying asset's volatility.
 A further limitation is structural. Heston is a pure-diffusion model, so the decomposition carries no jump term; any intraday jump in the underlying enters only
 through $(\Delta S)^2$ and is therefore absorbed into the Gamma term, indistinguishable from ordinary diffusive movement. For 0DTE the omission is costly.
 Bo\v{z}ovi\'c (2025)~\cite{bozovic2025}, working with five-minute SPY options, estimates the implied jump-risk premium at nearly twice the combined diffusion and volatility premia,
-with jump intensity clustering at the open and close. The roughly ninety-percent Gamma share reported above should therefore be read as diffusion and jump risk combined;
-isolating the two would require adding a jump term to the decomposition.
+with jump intensity clustering at the open and close. The Gamma share reported above should therefore be read as diffusion and jump risk combined;
+isolating the two would require adding a jump term to the decomposition. The bipower-variation check of Section~\ref{sec:results} bounds how much this
+can matter, showing the attribution essentially unchanged on the subsample of days with no detectable jump activity, but bounding the contamination is
+not the same as decomposing it, and a jump-diffusion version of this exercise remains the cleaner answer.
 
 
 \section{Conclusion}
 Learning the different attributions of the error is important for understanding the risks of 0DTE options and
-using them effectively. On a gross absolute attribution measure, the majority of the movement is carried by Gamma, which the
-model conflates with jumps. The remainder is mostly regime-dependent: Vega, the variance risk a delta-only hedge cannot remove at any rebalancing frequency, takes a larger share as the regime turns turbulent, and that swing survives a re-sort on the underlying's own move rather than the VIX.
-The other Greeks, while not negligible, are relatively small and do not change much across regimes.
-These results are preliminary. They describe at-the-money calls at a single baseline parameter set, robust to the mean-reversion rate but not to the vol-of-vol, with a thirty-day variance proxy that runs about three times realized variance, and further work is needed before the attribution can be claimed for 0DTE hedging in general.
-Future work should focus on improving the Heston parameter estimates, adding a jump term to the decomposition, and testing the model on a wider range of data.
+using them effectively. Gamma carries the largest share on both measures reported here, two-thirds of the variance of the realized
+hedged P\&L and half of the gross term movement, and the model conflates that share with jumps; a bipower-variation check on the
+jump-free days leaves it intact. Vega is a clear second rather than a rounding error, taking about a third on both measures. It is
+the variance risk a delta-only hedge cannot remove at any rebalancing frequency, and its gross share more than doubles from the
+calmest to the most turbulent days, a pattern that survives a re-sort on the underlying's own move rather than the variance proxy's.
+The other Greeks, while not negligible, are relatively small; Vanna is the instructive case, moving a great deal without
+contributing to the error that is realized.
+These results are preliminary. They describe at-the-money calls at a single baseline parameter set, robust to the mean-reversion
+rate but not to the vol-of-vol, with a one-day variance proxy that runs about a third above realized variance and that climbs
+mechanically through the session. That last defect is the binding one: it manufactures the drift in the Vega term, and until it is
+corrected this sample can say nothing about whether a 0DTE delta hedge loses money on average. Further work is needed before the
+attribution can be claimed for 0DTE hedging in general.
+Future work should focus on correcting the intraday roll in the variance proxy, improving the Heston parameter estimates, adding a jump term to the decomposition, and testing the model on a wider range of data.
 
 
 \appendix
@@ -491,9 +558,14 @@ Lord, R., Koekkoek, R., and van Dijk, D. (2010).
 Quantitative Finance, 10(2), 177--194.
 
 \bibitem{kamal1999}
-Kamal, M. (1999).
+Derman, E. and Kamal, M. (1999).
 \textit{When You Cannot Hedge Continuously: The Corrections to Black--Scholes.}
 Risk, 12(1), 82--85.
+
+\bibitem{bakshi2003}
+Bakshi, G. and Kapadia, N. (2003).
+\textit{Delta-Hedged Gains and the Negative Market Volatility Risk Premium.}
+The Review of Financial Studies, 16(2), 527--566.
 
 \bibitem{bertsimas2000}
 Bertsimas, D., Kogan, L., and Lo, A. W. (2000).
@@ -504,6 +576,18 @@ Journal of Financial Economics, 55(2), 173--204.
 Bergomi, L. (2016).
 \textit{Stochastic Volatility Modeling.}
 Chapman and Hall/CRC, Boca Raton, FL.
+
+\bibitem{bnsjump2006}
+Barndorff-Nielsen, O. E. and Shephard, N. (2006).
+\textit{Econometrics of Testing for Jumps in Financial Economics Using Bipower Variation.}
+Journal of Financial Econometrics, 4(1), 1--30.
+
+\bibitem{huangtauchen2005}
+Huang, X. and Tauchen, G. (2005).
+\textit{The Relative Contribution of Jumps to Total Price Variance.}
+Journal of Financial Econometrics, 3(4), 456--499.
+% TODO(HG): verify these two the way you verified Boyle-Emanuel / Kloeden-Platen / Lord et al.
+% I added them for the bipower test; volume/issue/pages are from memory, not checked against the journals.
 
 \bibitem{dimeraker2023}
 Dim, C., Eraker, B., and Vilkov, G. (2023).
