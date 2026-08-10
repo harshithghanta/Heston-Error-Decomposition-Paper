@@ -1,0 +1,16 @@
+{
+ "example_day": "2026-06-05",
+ "example_day_final_pnl": 0.0010529244487727243,
+ "example_day_final_terms": 0.0010023518156834891,
+ "example_day_mean_abs_gap": 0.037035723515056254,
+ "example_day_corr": 0.999352604604963,
+ "gamma_gross": 50.4018252473139,
+ "gamma_variance": 64.63129873955883,
+ "vega_gross": 34.9895546364119,
+ "vega_variance": 31.557850381777474,
+ "unexplained_variance": 5.609920814699161,
+ "gross_residual": 20.103568188731792,
+ "ndays": 57,
+ "umax": 10000.0,
+ "npoints": 8192
+}

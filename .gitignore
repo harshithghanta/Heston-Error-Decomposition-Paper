@@ -1,0 +1,18 @@
+__pycache__/
+*.pyc
+.DS_Store
+.venv/
+.claude/
+*.aux
+*.log
+*.out
+*.toc
+*.synctex.gz
+*.synctex(busy)
+*.fdb_latexmk
+*.fls
+*.pdf
+!paper1.pdf
+# the paper \includegraphics these, so they have to travel with it
+!fig_shares.pdf
+!fig_example_day.pdf
