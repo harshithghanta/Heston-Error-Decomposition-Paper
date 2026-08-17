@@ -19,6 +19,8 @@ import numpy as np
 
 import paper1_implementation as P
 
+EXAMPLE_DAY = "2026-06-05"   # named in the Figure 1 caption in paper1.tex
+
 BLUE = "#2F6FBF"    # first categorical hue
 AMBER = "#D97A1E"   # second categorical hue
 INK = "#1a1a1a"
@@ -174,8 +176,17 @@ def main():
     dates, prices, variances, totals, pnls = load()
     gross, varsh = fig_shares(totals, pnls)
 
-    # the day the paper already names as the most turbulent in the sample
-    day_index = dates.index("2026-06-05") if "2026-06-05" in dates else 0
+    # the day the paper already names as the most turbulent in the sample.
+    # fetch_data.py appends, so the sample grows but never loses this day; if it
+    # is missing something is wrong with the data and silently plotting day 0
+    # would put the wrong session under the caption in the paper.
+    if EXAMPLE_DAY not in dates:
+        raise SystemExit(
+            f"{EXAMPLE_DAY} is not in the sample ({dates[0]} to {dates[-1]}). "
+            "The paper's Figure 1 caption names that date; pick a new example "
+            "day and update the caption rather than plotting a different one."
+        )
+    day_index = dates.index(EXAMPLE_DAY)
     stats = fig_example_day(dates, prices, variances, day_index)
 
     stats.update({
