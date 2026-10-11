@@ -1,0 +1,24 @@
+\begin{table}[tbp]
+\centering
+\footnotesize
+\setlength{\tabcolsep}{4pt}
+\providecommand{\pairhead}[2]{\sbox0{#1}\sbox2{#2}\makebox[\ifdim\wd2>\dimexpr(\wd0-2\tabcolsep)/2\relax\wd2\else\dimexpr(\wd0-2\tabcolsep)/2\relax\fi][r]{\usebox2}}
+\begin{tabular}{lrrrrccrrrr}
+\toprule
+ & & \multicolumn{3}{c}{Hedged P\&L} & \multicolumn{2}{c}{Variance share (\%)} & \multicolumn{2}{c}{Gross share (\%)} & \multicolumn{2}{c}{Residual (\%)} \\
+\cmidrule(lr){3-5}\cmidrule(lr){6-7}\cmidrule(lr){8-9}\cmidrule(lr){10-11}
+Product & $n$ & Mean (bp) & $t_{\mathrm{NW}}$ & Days $<0$ (\%) & \pairhead{Variance share (\%)}{Gamma} & \pairhead{Variance share (\%)}{Vega} & \pairhead{Gross share (\%)}{Gamma} & \pairhead{Gross share (\%)}{Vega} & Unexpl. & Gross \\
+\midrule
+SPY & $1015$ & $-2.41$ & $-8.87$ & $71.2$ & $65.5$ & $38.1$ & $44.4$ & $34.9$ & $-5.0$ & $5.51$ \\
+ & & & & & [$52.9$,\,$78.1$] & [$27.3$,\,$48.0$] & & & & \\
+SPX & $1052$ & $-1.99$ & $-7.59$ & $68.4$ & $64.3$ & $40.3$ & $41.0$ & $35.7$ & $-5.3$ & $6.40$ \\
+ & & & & & [$54.0$,\,$74.4$] & [$28.1$,\,$51.2$] & & & & \\
+QQQ & $985$ & $-2.90$ & $-9.05$ & $68.8$ & $66.4$ & $39.7$ & $42.6$ & $37.0$ & $-2.6$ & $5.66$ \\
+ & & & & & [$55.7$,\,$76.9$] & [$29.5$,\,$48.9$] & & & & \\
+NDX & $997$ & $-1.61$ & $-4.96$ & $63.8$ & $70.9$ & $35.5$ & $40.6$ & $39.1$ & $-4.3$ & $7.44$ \\
+ & & & & & [$62.2$,\,$78.9$] & [$24.2$,\,$45.5$] & & & & \\
+\bottomrule
+\end{tabular}
+\caption{This is the main decomposition run separately on each product's full sample (SPY 1015, SPX 1052, QQQ 985, and NDX 997 days). The second row under each product is the 95\% percentile bootstrap interval. Days were dropped if no same-day strip exists or if bars were missing. Most half-days were kept and rescaled.}
+\label{tab:summary4}
+\end{table}

@@ -1,0 +1,21 @@
+\begin{table}[tbp]
+\centering
+\footnotesize
+\setlength{\tabcolsep}{4pt}
+\begin{tabular}{lrrrrrrrr}
+\toprule
+ & & & & & \multicolumn{2}{c}{Variance share (\%)} & & \\
+\cmidrule(lr){6-7}
+Setting & $\kappa$ & $\epsilon$ & $\rho$ & $2\kappa\eta$ & Gamma & Vega & Resid.\ (\%) & P\&L (bp) \\
+\midrule
+Main: $\epsilon$, $\rho$ fitted each morning & $3$ & $1.83^{\dagger}$ & $-0.37^{\dagger}$ & -- & $65.53$ & $38.11$ & $5.51$ & $-2.41$ \\
+Trailing 60-day fits (995 days) & $3$ & $1.85^{\dagger}$ & $-0.36^{\dagger}$ & -- & $70.27$ & $36.92$ & $5.63$ & $-2.34$ \\
+Main with $\kappa = 40$ & $40$ & $1.83^{\dagger}$ & $-0.37^{\dagger}$ & -- & $65.08$ & $38.93$ & $4.97$ & $-3.03$ \\
+Round values & $3$ & $1.00$ & $-0.70$ & $0.13$ & $70.21$ & $34.76$ & $4.73$ & $-3.24$ \\
+Round values guided by the data & $40$ & $1.50$ & $-0.25$ & $1.79$ & $76.21$ & $34.57$ & $4.97$ & $-3.44$ \\
+$\epsilon$, $\rho$ measured from the path & $3$ & $2.33$ & $-0.26$ & $0.13$ & $71.49$ & $37.41$ & $6.52$ & $-1.88$ \\
+\bottomrule
+\end{tabular}
+\caption{The main run (daily calibration) and alternative Heston settings. In the main run, $\epsilon$ and $\rho$ are fitted to each day's 09:31 option smile with $\kappa = 3$ and the trailing $\eta$; $^{\dagger}$ marks medians across days. $2\kappa\eta$ is the left side of the Feller condition, which is satisfied when the quantity is at least $\epsilon^2$.}
+\label{tab:params}
+\end{table}

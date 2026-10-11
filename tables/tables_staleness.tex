@@ -1,0 +1,19 @@
+\begin{table}[tbp]
+\centering
+\footnotesize
+\setlength{\tabcolsep}{4pt}
+\begin{tabular}{llrrrr}
+\toprule
+ & & \multicolumn{3}{c}{Carried quotes (\%)} & Updates per \\
+\cmidrule(lr){3-5}
+Underlying & Type & 10 s & 30 s & 1 m & contract-minute \\
+\midrule
+SPY & ETF, American & $18.1$ & $9.4$ & $5.7$ & $236$ \\
+QQQ & ETF, American & $17.0$ & $8.8$ & $5.2$ & $283$ \\
+SPX & Index, European & $3.1$ & $0.5$ & $0.1$ & $1670$ \\
+NDX & Index, European & $15.1$ & $6.2$ & $2.8$ & $293$ \\
+\bottomrule
+\end{tabular}
+\caption{The table shows how often each financial product's quotes go stale, and how active each market is. The carried-quotes columns represent the share of option prices with no fresh update in the interval, which reuse an earlier quote under the 2-minute carry.}
+\label{tab:staleness}
+\end{table}

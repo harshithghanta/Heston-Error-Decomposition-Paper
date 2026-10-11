@@ -1,0 +1,17 @@
+# Paper-only repo for now: ignore everything, then allow exactly what paper1.tex needs to build.
+*
+!.gitignore
+!LICENSE
+!paper1.tex
+!paper1.pdf
+!fig_example_day.pdf
+!fig_shares_tod.pdf
+!fig_vega_curve_3d.pdf
+!tables/
+!tables/*.tex
+# Code (data and run outputs stay local)
+!code/
+!code/*.py
+!puller/
+!puller/*.py
+!README.md

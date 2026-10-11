@@ -1,0 +1,19 @@
+\begin{table}[tbp]
+\centering
+\scriptsize
+\setlength{\tabcolsep}{3pt}
+\providecommand{\pairhead}[2]{\sbox0{#1}\sbox2{#2}\makebox[\ifdim\wd2>\dimexpr(\wd0-2\tabcolsep)/2\relax\wd2\else\dimexpr(\wd0-2\tabcolsep)/2\relax\fi][r]{\usebox2}}
+\begin{tabular}{llrrrrrrrr}
+\toprule
+ & & & & \multicolumn{2}{c}{Variance share (\%)} & \multicolumn{2}{c}{Gross share (\%)} & & \\
+\cmidrule(lr){5-6}\cmidrule(lr){7-8}
+\parbox[b]{0.21\linewidth}{\raggedright\hangindent=1em\hangafter=1 Expiry convention\strut} & Quotes & P\&L (bp) & $t_{\mathrm{NW}}$ & \pairhead{Variance share (\%)}{Gamma} & \pairhead{Variance share (\%)}{Vega} & \pairhead{Gross share (\%)}{Gamma} & \pairhead{Gross share (\%)}{Vega} & Resid.\ (\%) & QV ratio \\
+\midrule
+\parbox[t]{0.21\linewidth}{\raggedright\hangindent=1em\hangafter=1 Settle at payoff, 15:51\strut} & 2-min carry & $-4.55$ & $-15.27$ & $79.72$ & $18.27$ & $47.62$ & $29.83$ & $7.24$ & $1.465$ \\
+\parbox[t]{0.21\linewidth}{\raggedright\hangindent=1em\hangafter=1 Variance rescaled $v\times380/405$\strut} & 2-min carry & $-3.54$ & $-12.37$ & $79.18$ & $19.34$ & $45.97$ & $30.42$ & $7.90$ & $1.374$ \\
+\parbox[t]{0.21\linewidth}{\raggedright\hangindent=1em\hangafter=1 Close at model value, 15:51 (main)\strut} & 2-min carry & $-2.41$ & $-8.87$ & $65.53$ & $38.11$ & $44.37$ & $34.91$ & $5.51$ & $1.374$ \\
+\bottomrule
+\end{tabular}
+\caption{The end of the day can be represented by rescaling variance, closing at model price, or settling at payoff. The QV ratio is the model's variance divided by the realized variance.}
+\label{tab:clock}
+\end{table}

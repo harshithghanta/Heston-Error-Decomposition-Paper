@@ -1,0 +1,28 @@
+\begin{table}[tbp]
+\centering
+\footnotesize
+\setlength{\tabcolsep}{4pt}
+\providecommand{\pairhead}[2]{\sbox0{#1}\sbox2{#2}\makebox[\ifdim\wd2>\dimexpr(\wd0-2\tabcolsep)/2\relax\wd2\else\dimexpr(\wd0-2\tabcolsep)/2\relax\fi][r]{\usebox2}}
+\begin{tabular}{lrrrrrr}
+\toprule
+ & \multicolumn{3}{c}{SPY ($n=993$)} & \multicolumn{3}{c}{QQQ ($n=971$)} \\
+\cmidrule(lr){2-4}\cmidrule(lr){5-7}
+ & \multicolumn{2}{c}{Variance share (\%)} & & \multicolumn{2}{c}{Variance share (\%)} & \\
+\cmidrule(lr){2-3}\cmidrule(lr){5-6}
+Stale-quote rule & \pairhead{Variance share (\%)}{Gamma} & \pairhead{Variance share (\%)}{Vega} & Resid.\ (\%) & \pairhead{Variance share (\%)}{Gamma} & \pairhead{Variance share (\%)}{Vega} & Resid.\ (\%) \\
+\midrule
+No carry & $60.62$ & $42.03$ & $6.54$ & $65.20$ & $41.11$ & $5.85$ \\
+Carry $\le$ 1 min & $60.87$ & $41.85$ & $5.21$ & $65.37$ & $40.81$ & $5.81$ \\
+Carry $\le$ 2 min & $60.94$ & $41.37$ & $5.13$ & $65.49$ & $40.63$ & $5.78$ \\
+Carry $\le$ 5 min & $61.17$ & $41.01$ & $5.11$ & $65.77$ & $40.53$ & $11.21$ \\
+Carry $\le$ 15 min & $61.56$ & $40.57$ & $5.09$ & $66.02$ & $40.21$ & $11.21$ \\
+As-of (carry without limit) & $62.22$ & $39.78$ & $5.10$ & $66.59$ & $38.90$ & $13.86$ \\
+Carry $\le$ 95th pct.\ quote gap & $61.17$ & $41.46$ & $5.19$ & $65.59$ & $40.22$ & $13.87$ \\
+Carry until forward moves 1 strike & $61.99$ & $40.04$ & $5.73$ & $66.43$ & $39.51$ & $5.84$ \\
+Carry until forward moves 2 strikes & $62.21$ & $39.71$ & $5.66$ & $66.59$ & $38.85$ & $8.43$ \\
+Carry until forward moves 3 strikes & $62.23$ & $39.78$ & $5.11$ & $66.60$ & $38.85$ & $8.40$ \\
+\bottomrule
+\end{tabular}
+\caption{The Greek split and the residual under each rule for how long an old quote can be reused, on SPY and QQQ.}
+\label{tab:stale}
+\end{table}

@@ -1,0 +1,16 @@
+\begin{table}[tbp]
+\centering
+\footnotesize
+\setlength{\tabcolsep}{4pt}
+\begin{tabular}{lrrrrrr}
+\toprule
+Hedge & $\mathrm{E}|\Delta\Pi|$ (bp) & SD (bp) & Mean (bp) & $t_{\mathrm{NW}}$ & Var.\ change (\%) & At cap (\%) \\
+\midrule
+Delta only (main run) & $5.64$ & $7.32$ & $-2.41$ & $-8.87$ & -- & -- \\
++ 0DTE call, $0.5\%$ OTM & $2.26$ & $4.06$ & $+0.66$ & $+5.01$ & $-69.3$ & $8.0$ \\
++ 0DTE call, $1\%$ OTM & $3.71$ & $9.86$ & $+1.04$ & $+3.41$ & $+81.5$ & $34.8$ \\
+\bottomrule
+\end{tabular}
+\caption{A volatility hedge with a second 0DTE call, held each bar in the quantity that would set the book's Vega to zero (up to the cap), with the whole book delta-hedged in shares. Variance change is relative to the delta-only hedge; the hedge quantity is capped at 25 calls per call.}
+\label{tab:volhedge}
+\end{table}

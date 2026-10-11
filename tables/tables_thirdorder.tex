@@ -1,0 +1,22 @@
+\begin{table}[tbp]
+\centering
+\footnotesize
+\setlength{\tabcolsep}{4pt}
+\providecommand{\pairhead}[2]{\sbox0{#1}\sbox2{#2}\makebox[\ifdim\wd2>\dimexpr(\wd0-2\tabcolsep)/2\relax\wd2\else\dimexpr(\wd0-2\tabcolsep)/2\relax\fi][r]{\usebox2}}
+\begin{tabular*}{0.70\linewidth}{@{\extracolsep{\fill}}rcrrrrr}
+\toprule
+ & & \multicolumn{3}{c}{Gross residual (\%)} & \multicolumn{2}{c}{Unexpl.\ var.\ (\%)} \\
+\cmidrule(lr){3-5}\cmidrule(lr){6-7}
+Interval & Uneven & 7 terms & 8 terms & Change & \pairhead{Unexpl.\ var.\ (\%)}{7 terms} & \pairhead{Unexpl.\ var.\ (\%)}{8 terms} \\
+\midrule
+\multicolumn{7}{l}{\rlap{\emph{1015 sessions, hedged to 15:51 (12:51 on half-days); the eighth term is third order in $S$}}} \\
+5 m & no & $5.51$ & $5.91$ & $+0.40$ & $-4.99$ & $-7.63$ \\
+10 m & no & $7.88$ & $8.95$ & $+1.08$ & $-5.95$ & $-8.59$ \\
+20 m & no & $15.02$ & $17.49$ & $+2.47$ & $-6.35$ & $-8.94$ \\
+30 m & yes & $15.64$ & $19.82$ & $+4.18$ & $-9.65$ & $-13.96$ \\
+60 m & yes & $21.38$ & $32.00$ & $+10.62$ & $-12.70$ & $-39.43$ \\
+\bottomrule
+\end{tabular*}
+\caption{The residual is represented with 7 terms versus 8.}
+\label{tab:thirdorder}
+\end{table}

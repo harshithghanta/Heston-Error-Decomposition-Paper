@@ -1,0 +1,25 @@
+\begin{table}[tbp]
+\centering
+\scriptsize
+\setlength{\tabcolsep}{4pt}
+\providecommand{\pairhead}[2]{\sbox0{#1}\sbox2{#2}\makebox[\ifdim\wd2>\dimexpr(\wd0-2\tabcolsep)/2\relax\wd2\else\dimexpr(\wd0-2\tabcolsep)/2\relax\fi][r]{\usebox2}}
+\begin{tabular}{lrrrrrrr}
+\toprule
+ & & & & \multicolumn{2}{c}{Variance share (\%)} & & \\
+\cmidrule(lr){5-6}
+\parbox[b]{0.38\linewidth}{\raggedright\hangindent=1em\hangafter=1 Treatment of the two refilled days\strut} & $n$ & P\&L (bp) & $t_{\mathrm{NW}}$ & \pairhead{Variance share (\%)}{Gamma} & \pairhead{Variance share (\%)}{Vega} & Unexpl.\ (\%) & Resid.\ (\%) \\
+\midrule
+\parbox[t]{0.38\linewidth}{\raggedright\hangindent=1em\hangafter=1 Main run, as filled\strut} & $1015$ & $-2.41$ & $-8.87$ & $65.53$ & $38.11$ & $-4.99$ & $5.51$ \\
+\parbox[t]{0.38\linewidth}{\raggedright\hangindent=1em\hangafter=1 2025-04-07: three opening marks refilled (carry, next, or interpolate)\strut} & $1015$ & $-2.42$ & $-8.93$ & $65.01$ & $38.61$ & $-4.97$ & $5.52$ \\
+\parbox[t]{0.38\linewidth}{\raggedright\hangindent=1em\hangafter=1 2025-04-09: 13:20 at the unscreened value\strut} & $1015$ & $-2.41$ & $-8.87$ & $65.57$ & $38.13$ & $-4.98$ & $5.50$ \\
+\parbox[t]{0.38\linewidth}{\raggedright\hangindent=1em\hangafter=1 2025-04-09: 13:20 carried from the previous mark\strut} & $1015$ & $-2.41$ & $-8.89$ & $65.24$ & $38.04$ & $-4.97$ & $5.63$ \\
+\parbox[t]{0.38\linewidth}{\raggedright\hangindent=1em\hangafter=1 2025-04-09: 13:20 taken from the next mark\strut} & $1015$ & $-2.41$ & $-8.84$ & $65.95$ & $38.35$ & $-4.84$ & $5.30$ \\
+\midrule
+\parbox[t]{0.38\linewidth}{\raggedright\hangindent=1em\hangafter=1 2025-04-07 dropped\strut} & $1014$ & $-2.46$ & $-9.22$ & $62.13$ & $41.04$ & $-4.63$ & $5.45$ \\
+\parbox[t]{0.38\linewidth}{\raggedright\hangindent=1em\hangafter=1 2025-04-09 dropped\strut} & $1014$ & $-2.42$ & $-8.96$ & $64.42$ & $38.47$ & $-4.61$ & $5.15$ \\
+\parbox[t]{0.38\linewidth}{\raggedright\hangindent=1em\hangafter=1 Both dropped\strut} & $1013$ & $-2.47$ & $-9.24$ & $60.95$ & $41.42$ & $-4.23$ & $5.08$ \\
+\bottomrule
+\end{tabular}
+\caption{The results when 2025-04-07 and 2025-04-09 are dropped or filled in other ways.}
+\label{tab:fill}
+\end{table}
