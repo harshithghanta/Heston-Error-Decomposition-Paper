@@ -133,7 +133,7 @@ Each table is one function, run by name with its inputs after it (for example `p
 | Simulation checks | `validation_sim` |
 
 ## Citation
-[(https://zenodo.org/records/23271889)]
+https://zenodo.org/records/23271889
 
 ## License
 MIT
