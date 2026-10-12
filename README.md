@@ -3,7 +3,7 @@
 
 This paper explores 0DTE options and their errors by decomposing them under Bergomi's compensated-Greek framework. By testing across SPX and NDX (European-style options) along with SPY and QQQ (American-style options), it has been discovered that Gamma and Vega are the leading causes of hedging error.
 
-**[Read the paper (PDF)](paper1.pdf)** · DOI: [after Zenodo]
+**[Read the paper (PDF)](paper1.pdf)** · DOI: [10.5281/zenodo.23271888](https://doi.org/10.5281/zenodo.23271888)
 
 ## Overview
 This paper delta-hedges (and also tests a Vega hedge) an ATM 0DTE call option every 5m (other intervals have been tested as well) under the Heston model. The decomposition splits the hedging error into 7 discrete Greeks: Gamma, Vega, Vanna, Volga (Vomma), Charm, Veta, and Time Convexity (TConv), building on Bergomi's compensated-Greek decomposition structure, adding the time Greeks that matter in fast-moving markets (such as 0DTE). Without the time Greeks, hedgers have a 14.6% unexplained residual that cannot be placed into any Greek category. With these Greeks added, the residual shrinks to around 5.5%. ε and ρ are calibrated daily to each morning's option smile.
