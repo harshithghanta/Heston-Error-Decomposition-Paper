@@ -132,7 +132,7 @@ Each table is one function, run by name with its inputs after it (for example `p
 | Numbers quoted in the text | `text_numbers` |
 | Simulation checks | `validation_sim` |
 
-## Citation
+## Preprint
 https://zenodo.org/records/23271889
 
 ## License
