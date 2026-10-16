@@ -315,18 +315,26 @@ def table_vegasplit(sym, com = None):
     settings.KAPPA, settings.ETA, settings.EPSILON, settings.RHO = saved
 
 
-def table_volhedge():
+def table_volhedge(sym):
     saved = (settings.KAPPA, settings.ETA, settings.EPSILON, settings.RHO)
-    rows = [('delta only', None), ('0.5% OTM', 1.005), ('1% OTM', 1.01)]
+    d, pr, var = L.load_days(f'results_v2/panels/{sym}5m_main1015.csv')
+    f = pd.read_csv(f'calibration/fits_{sym}.csv').set_index('date')
+    ft = [(f.loc[x, 'eta'], f.loc[x, 'eps'], f.loc[x, 'rho']) for x in d]
+    rows = [('delta only', None), ('0.25% OTM', 1.0025), ('0.5% OTM', 1.005), ('1% OTM', 1.01)]
     base = None
     for name, kh in rows:
-        book = np.zeros(len(prices))
+        book = np.zeros(len(pr))
+        gamma = np.zeros(len(pr))
         capped = 0
+        no_vega = 0
         bars_total = 0
-        for day in range(len(prices)):
-            settings.ETA, settings.EPSILON, settings.RHO = fits[day]
-            S, v = prices[day], variances[day]
+        n_total = 0
+        traded = 0
+        for day in range(len(pr)):
+            settings.ETA, settings.EPSILON, settings.RHO = ft[day]
+            S, v = pr[day], var[day]
             last = len(S) - 1
+            n_prev = 0
             for b in range(last):
                 tau = settings.ONE_DAY * (last - b) / 76 + settings.TAU_OFF
                 dt = settings.ONE_DAY / 76
@@ -334,24 +342,30 @@ def table_volhedge():
                 bars_total += 1
                 if kh is None:
                     book[day] += p
+                    gamma[day] += t['gamma']
                     continue
                 vT = H.sv_greeks(S[b], v[b], tau)['vega']
                 th, ph = H.one_step(S[b] / kh, v[b], S[b+1] / kh, v[b+1], tau, dt)
                 vH = kh * H.sv_greeks(S[b] / kh, v[b], tau)['vega']
                 if vH <= 1e-12:
-                    n = -25
-                    capped += 1
+                    n = 0
+                    no_vega += 1
                 else:
                     n = -vT / vH
                     if abs(n) >= 25:
                         n = np.sign(n) * 25
                         capped += 1
                 book[day] += p + n * kh * ph
+                gamma[day] += t['gamma'] + n * kh * th['gamma']
+                n_total += n
+                traded += abs(n - n_prev)
+                n_prev = n
         if base is None:
-            base = book
+            base, gamma_base = book, gamma
         m, tt, neg = SM.mean_stats(book)
-        print(name, round(1e4 * np.mean(np.abs(book)), 2), round(1e4 * np.std(book, ddof = 1), 2), round(m, 2), round(tt, 2),
-              round(100 * (np.var(book) / np.var(base) - 1), 1), round(100 * capped / bars_total, 1))
+        print(sym, name, round(1e4 * np.mean(np.abs(book)), 2), round(1e4 * np.std(book, ddof = 1), 2), round(m, 2), round(tt, 2),
+              round(100 * (np.var(book) / np.var(base) - 1), 1), round(100 * capped / bars_total, 1), round(-n_total / bars_total, 1),
+              round(100 * np.var(gamma) / np.var(gamma_base), 1), round(traded / len(pr), 1), round(100 * no_vega / bars_total, 2))
     settings.KAPPA, settings.ETA, settings.EPSILON, settings.RHO = saved
 
 
