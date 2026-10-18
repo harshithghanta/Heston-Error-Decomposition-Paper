@@ -1,6 +1,12 @@
 import pandas as pd
 import settings
 
+
+def load_fits(sym, dates):
+    f = pd.read_csv(f'calibration/fits_{sym}.csv').set_index('date')
+    return [(f.loc[d, 'eta'], f.loc[d, 'eps'], f.loc[d, 'rho']) for d in dates]
+
+
 def load_days(path):
     df = pd.read_csv(path, index_col=0)
     df.index = pd.to_datetime(df.index)

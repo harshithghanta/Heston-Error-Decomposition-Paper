@@ -127,9 +127,9 @@ if __name__ == '__main__':
     import sys
     sym = sys.argv[1]
     root = {'spy': 'pilot1m', 'spx': 'spx1m', 'qqq': 'qqq1m', 'ndx': 'ndx1m'}[sym]
-    dates, prices, variances = L.load_days(f'results_v2/panels/{sym}5m_main1015.csv')
+    dates, prices, variances = L.load_days(f'results_v2/panels/his_{sym}5m.csv')
     etas = trailing_eta(variances)
-    p = pd.read_csv(f'results_v2/panels/{sym}5m_main1015.csv')
+    p = pd.read_csv(f'results_v2/panels/his_{sym}5m.csv')
     p['d'] = p.timestamp.str[:10]
     s0 = p.groupby('d').und_close.first()
     fits = []

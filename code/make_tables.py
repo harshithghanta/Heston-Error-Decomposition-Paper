@@ -6,26 +6,27 @@ import statistical_methods as SM
 import load_data as L
 import os
 
-dates, prices, variances = L.load_days('results_v2/panels/spy5m_main1015.csv')
-f = pd.read_csv('calibration/fits_spy.csv').set_index('date')
-fits = []
-for d in dates:
-    fits.append((f.loc[d, 'eta'], f.loc[d, 'eps'], f.loc[d, 'rho']))
-
-if os.path.exists('results_v2/runs/his_main_run.npz'):
-    z = np.load('results_v2/runs/his_main_run.npz')
-    pnls = z['pnls']
-    totals = {}
-    for g in settings.GREEKS:
-        totals[g] = z[g]
-else:
-    totals, pnls = H.run_all(prices, variances, 1, fits = fits)
-    np.savez('results_v2/runs/his_main_run.npz', pnls = pnls, **totals)
+dates = prices = variances = fits = totals = pnls = None
 
 
+def load_main():
+    global dates, prices, variances, fits, totals, pnls
+    if dates is None:
+        d, pr, v = L.load_days('results_v2/panels/his_spy5m.csv')
+        ft = L.load_fits('spy', d)
+        if os.path.exists('results_v2/runs/his_main_run.npz'):
+            with np.load('results_v2/runs/his_main_run.npz') as z:
+                pn = z['pnls']
+                t = {g: z[g] for g in settings.GREEKS}
+        else:
+            t, pn = H.run_all(pr, v, 1, fits = ft)
+            np.savez('results_v2/runs/his_main_run.npz', pnls = pn, **t)
+        dates, prices, variances, fits, totals, pnls = d, pr, v, ft, t, pn
+    return dates, prices, variances, fits, totals, pnls
 
 
 def table_freq():
+    load_main()
     strides = [2, 3, 4, 6, 12]
     for s in strides:
         t, pn = H.run_all(prices, variances, s, fits = fits)
@@ -35,6 +36,7 @@ def table_freq():
 
 
 def table_drifts():
+    load_main()
     m, t, neg = SM.mean_stats(np.array(pnls))
     print('P&L', round(m, 3), round(t, 2), neg)
     order = ['gamma', 'vega', 'vanna', 'volga', 'charm', 'tconv', 'veta']
@@ -52,6 +54,7 @@ def table_drifts():
 
 
 def table_close_early(ns = (0, 1, 2, 3, 4, 6, 8, 12, 18, 24, 36)):
+    load_main()
     for n in ns:
         t, pn = H.run_all(prices, variances, 1, close_early = n, fits = fits)
         pn = np.array(pn)
@@ -65,8 +68,7 @@ def table_close_early(ns = (0, 1, 2, 3, 4, 6, 8, 12, 18, 24, 36)):
 def table_pnlsweep():
     def block(path, strides, steps):
         d, pr, v = L.load_days(path)
-        f = pd.read_csv('calibration/fits_spy.csv').set_index('date')
-        ft = [(f.loc[x, 'eta'], f.loc[x, 'eps'], f.loc[x, 'rho']) for x in d]
+        ft = L.load_fits('spy', d)
         print(path, len(d), 'days, mean v', np.mean(np.concatenate(v)))
         for s in strides:
             bars = list(range(0, steps + 1, s))
@@ -77,102 +79,119 @@ def table_pnlsweep():
             t, pn = H.run_all(pr, v, s, steps_daily = steps, fits = ft)
             pn = np.array(pn)
             print(s, len(gaps), uneven, round(1e4 * np.mean(np.abs(pn)), 3), round(1e4 * np.mean(pn), 2))
-    block('results_v2/panels/spy5m_main1015.csv', [1, 2, 3, 4, 6, 12], 76)
-    block('results_v2/panels/spy1m452_main1015.csv', [1, 5, 10, 15, 20, 30, 60], 380)
+    block('results_v2/panels/his_spy5m.csv', [1, 2, 3, 4, 6, 12], 76)
+    block('results_v2/panels/his_spy1m.csv', [1, 5, 10, 15, 20, 30, 60], 380)
 
 
 def table_thirdorder():
-    saved = (settings.KAPPA, settings.ETA, settings.EPSILON, settings.RHO)
-    for stride in [1, 2, 4, 6, 12]:
-        sp = np.zeros(len(prices))
-        for day in range(len(prices)):
-            settings.ETA, settings.EPSILON, settings.RHO = fits[day]
-            S, v = prices[day], variances[day]
-            last = len(S) - 1
-            bars = list(range(0, last + 1, stride))
-            if bars[-1] != last:
-                bars.append(last)
-            for a, b in zip(bars[:-1], bars[1:]):
-                tau = settings.ONE_DAY * (last - a) / 76 + settings.TAU_OFF
-                dt = settings.ONE_DAY * (b - a) / 76
-                t, pn, s = H.one_step(S[a], v[a], S[b], v[b], tau, dt, speed_out = True)
-                sp[day] += s
-        t7, pn = H.run_all(prices, variances, stride, fits = fits)
-        pn = np.array(pn)
-        r7 = SM.residual_pct(t7, pn)
-        left7 = pn - sum(np.array(t7[g]) for g in settings.GREEKS)
-        left8 = left7 - sp
-        u7 = 100 * np.cov(left7, pn, bias = True)[0, 1] / np.var(pn)
-        u8 = 100 * np.cov(left8, pn, bias = True)[0, 1] / np.var(pn)
-        r8 = 100 * np.mean(np.abs(left8)) / np.mean(np.abs(pn))
-        print(5 * stride, round(r7, 2), round(r8, 2), round(r8 - r7, 2), round(u7, 2), round(u8, 2))
-        if stride == 1:
-            size = {g: np.mean(np.abs(t7[g])) for g in settings.GREEKS}
-            size['speed'] = np.mean(np.abs(sp))
-            gross = 100 * size['speed'] / sum(size.values())
-            share = 100 * np.cov(sp, pn, bias = True)[0, 1] / np.var(pn)
-            rank = sorted(size, key = size.get, reverse = True).index('speed') + 1
-            print('speed at 5 m: gross share', round(gross, 2), 'variance share', round(share, 2), 'rank', rank, 'of 8')
-    settings.KAPPA, settings.ETA, settings.EPSILON, settings.RHO = saved
+    load_main()
+    saved = (settings.KAPPA, settings.ETA, settings.EPSILON, settings.RHO,
+             settings.ONE_DAY, settings.TAU_OFF)
+    try:
+        for stride in [1, 2, 4, 6, 12]:
+            sp = np.zeros(len(prices))
+            for day in range(len(prices)):
+                settings.ETA, settings.EPSILON, settings.RHO = fits[day]
+                S, v = prices[day], variances[day]
+                last = len(S) - 1
+                bars = list(range(0, last + 1, stride))
+                if bars[-1] != last:
+                    bars.append(last)
+                for a, b in zip(bars[:-1], bars[1:]):
+                    tau = settings.ONE_DAY * (last - a) / 76 + settings.TAU_OFF
+                    dt = settings.ONE_DAY * (b - a) / 76
+                    t, pn, s = H.one_step(S[a], v[a], S[b], v[b], tau, dt, speed_out = True)
+                    sp[day] += s
+            t7, pn = H.run_all(prices, variances, stride, fits = fits)
+            pn = np.array(pn)
+            r7 = SM.residual_pct(t7, pn)
+            left7 = pn - sum(np.array(t7[g]) for g in settings.GREEKS)
+            left8 = left7 - sp
+            u7 = 100 * np.cov(left7, pn, bias = True)[0, 1] / np.var(pn)
+            u8 = 100 * np.cov(left8, pn, bias = True)[0, 1] / np.var(pn)
+            r8 = 100 * np.mean(np.abs(left8)) / np.mean(np.abs(pn))
+            print(5 * stride, round(r7, 2), round(r8, 2), round(r8 - r7, 2), round(u7, 2), round(u8, 2))
+            if stride == 1:
+                size = {g: np.mean(np.abs(t7[g])) for g in settings.GREEKS}
+                size['speed'] = np.mean(np.abs(sp))
+                gross = 100 * size['speed'] / sum(size.values())
+                share = 100 * np.cov(sp, pn, bias = True)[0, 1] / np.var(pn)
+                rank = 1
+                for g in settings.GREEKS:
+                    if size[g] >= size['speed']:
+                        rank += 1
+                print('speed at 5 m: gross share', round(gross, 2), 'variance share', round(share, 2), 'rank', rank, 'of 8')
+    finally:
+        (settings.KAPPA, settings.ETA, settings.EPSILON, settings.RHO,
+         settings.ONE_DAY, settings.TAU_OFF) = saved
 
 
 def table_clock():
-    def row(name, t, pn, v_used):
-        pn = np.array(pn)
-        m, tt, neg = SM.mean_stats(pn)
-        vs = SM.variance_shares(t, pn)
-        gs = SM.gross_shares(t)
-        dt = settings.ONE_DAY / 76
-        model = sum(np.sum(np.array(v[:-1]) * np.array(S[:-1]) ** 2 * dt) for S, v in zip(prices, v_used))
-        real = sum(np.sum(np.diff(S) ** 2) for S in prices)
-        print(name, round(m, 2), round(tt, 2), round(vs['gamma'], 2), round(vs['vega'], 2),
-              round(gs['gamma'], 2), round(gs['vega'], 2), round(SM.residual_pct(t, pn), 2), round(model / real, 3))
-    row('model close (main)', totals, pnls, variances)
-    old_day, old_off = settings.ONE_DAY, settings.TAU_OFF
-    settings.ONE_DAY, settings.TAU_OFF = 1 / 252, 0.0
-    t, pn = H.run_all(prices, variances, 1, fits = fits)
-    row('settle at payoff', t, pn, variances)
-    scaled = [np.array(v) * 380 / 405 for v in variances]
-    t, pn = H.run_all(prices, scaled, 1, fits = fits)
-    row('variance rescaled', t, pn, scaled)
-    settings.ONE_DAY, settings.TAU_OFF = old_day, old_off
+    load_main()
+    saved = (settings.KAPPA, settings.ETA, settings.EPSILON, settings.RHO,
+             settings.ONE_DAY, settings.TAU_OFF)
+    try:
+        def row(name, t, pn, v_used):
+            pn = np.array(pn)
+            m, tt, neg = SM.mean_stats(pn)
+            vs = SM.variance_shares(t, pn)
+            gs = SM.gross_shares(t)
+            dt = settings.ONE_DAY / 76
+            model = sum(np.sum(np.array(v[:-1]) * np.array(S[:-1]) ** 2 * dt) for S, v in zip(prices, v_used))
+            real = sum(np.sum(np.diff(S) ** 2) for S in prices)
+            print(name, round(m, 2), round(tt, 2), round(vs['gamma'], 2), round(vs['vega'], 2),
+                  round(gs['gamma'], 2), round(gs['vega'], 2), round(SM.residual_pct(t, pn), 2), round(model / real, 3))
+        row('model close (main)', totals, pnls, variances)
+        settings.ONE_DAY, settings.TAU_OFF = 1 / 252, 0.0
+        t, pn = H.run_all(prices, variances, 1, fits = fits)
+        row('settle at payoff', t, pn, variances)
+        scaled = [np.array(v) * 380 / 405 for v in variances]
+        t, pn = H.run_all(prices, scaled, 1, fits = fits)
+        row('variance rescaled', t, pn, scaled)
+    finally:
+        (settings.KAPPA, settings.ETA, settings.EPSILON, settings.RHO,
+         settings.ONE_DAY, settings.TAU_OFF) = saved
 
 
 def table_params():
-    saved = (settings.KAPPA, settings.ETA, settings.EPSILON, settings.RHO)
-    def row(name, t, pn):
-        vs = SM.variance_shares(t, pn)
-        print(name, round(vs['gamma'], 2), round(vs['vega'], 2),
-              round(SM.residual_pct(t, pn), 2), round(1e4 * np.mean(pn), 2))
-    row('main', totals, pnls)
-    eps = [f[1] for f in fits]
-    rho = [f[2] for f in fits]
-    keep, trail = [], []
-    for i in range(len(fits)):
-        lo = max(0, i - 60)
-        if i - lo < 20:
-            continue
-        keep.append(i)
-        trail.append((fits[i][0], np.median(eps[lo:i]), np.median(rho[lo:i])))
-    t, pn = H.run_all([prices[i] for i in keep], [variances[i] for i in keep], 1, fits = trail)
-    row('trailing', t, pn)
-    settings.KAPPA = 40
-    t, pn = H.run_all(prices, variances, 1, fits = fits)
-    settings.KAPPA = 3.0
-    row('kappa40', t, pn)
-    settings.ETA = 0.022364
-    for name, k, e, r in [('round', 3, 1.0, -0.7), ('guided', 40, 1.5, -0.25), ('path', 3, 2.33, -0.26)]:
-        settings.KAPPA, settings.EPSILON, settings.RHO = k, e, r
-        t, pn = H.run_all(prices, variances, 1)
-        row(name, t, pn)
-    settings.KAPPA = 3.0
-    settings.KAPPA, settings.ETA, settings.EPSILON, settings.RHO = saved
+    load_main()
+    saved = (settings.KAPPA, settings.ETA, settings.EPSILON, settings.RHO,
+             settings.ONE_DAY, settings.TAU_OFF)
+    try:
+        def row(name, t, pn):
+            vs = SM.variance_shares(t, pn)
+            print(name, round(vs['gamma'], 2), round(vs['vega'], 2),
+                  round(SM.residual_pct(t, pn), 2), round(1e4 * np.mean(pn), 2))
+        row('main', totals, pnls)
+        eps = [f[1] for f in fits]
+        rho = [f[2] for f in fits]
+        keep, trail = [], []
+        for i in range(len(fits)):
+            lo = max(0, i - 60)
+            if i - lo < 20:
+                continue
+            keep.append(i)
+            trail.append((fits[i][0], np.median(eps[lo:i]), np.median(rho[lo:i])))
+        t, pn = H.run_all([prices[i] for i in keep], [variances[i] for i in keep], 1, fits = trail)
+        row('trailing', t, pn)
+        settings.KAPPA = 40
+        t, pn = H.run_all(prices, variances, 1, fits = fits)
+        settings.KAPPA = 3.0
+        row('kappa40', t, pn)
+        settings.ETA = 0.022364
+        for name, k, e, r in [('round', 3, 1.0, -0.7), ('guided', 40, 1.5, -0.25), ('path', 3, 2.33, -0.26)]:
+            settings.KAPPA, settings.EPSILON, settings.RHO = k, e, r
+            t, pn = H.run_all(prices, variances, 1)
+            row(name, t, pn)
+        settings.KAPPA = 3.0
+    finally:
+        (settings.KAPPA, settings.ETA, settings.EPSILON, settings.RHO,
+         settings.ONE_DAY, settings.TAU_OFF) = saved
 
 
 def table_summary4(sym):
-    d, pr, v = L.load_days(f'results_v2/panels/{sym}5m_main1015.csv')
-    f = pd.read_csv(f'calibration/fits_{sym}.csv').set_index('date')
-    ft = [(f.loc[x, 'eta'], f.loc[x, 'eps'], f.loc[x, 'rho']) for x in d]
+    d, pr, v = L.load_days(f'results_v2/panels/his_{sym}5m.csv')
+    ft = L.load_fits(sym, d)
     t, pn = H.run_all(pr, v, 1, fits = ft)
     pn = np.array(pn)
     m, tt, neg = SM.mean_stats(pn)
@@ -192,21 +211,24 @@ def table_xsec4():
         for s in Z:
             if use_shared:
                 m = np.array([x in shared for x in Z[s]['dates']])
+                d, _, v = L.load_days(f'results_v2/panels/his_{s}1m.csv')
+                by_date = dict(zip(d, v))
+                avg_v = np.mean(np.concatenate([by_date[x] for x in Z[s]['dates'][m]]))
             else:
                 m = np.ones(len(Z[s]['dates']), bool)
+                avg_v = float(Z[s]['avg_v'])
             t = {g: Z[s][g][m] for g in settings.GREEKS}
             pn = Z[s]['pnl_5'][m]
             vs = SM.variance_shares(t, pn)
             gs = SM.gross_shares(t)
-            print(s, m.sum(), round(float(Z[s]['avg_v']), 4), round(vs['gamma'], 2), round(vs['vega'], 2),
+            print(s, m.sum(), round(avg_v, 4), round(vs['gamma'], 2), round(vs['vega'], 2),
                   round(gs['gamma'], 2), round(gs['vega'], 2), round(vs['residual'], 2),
                   round(SM.residual_pct(t, pn), 2), round(1e4 * np.mean(pn), 2))
 
 
 def run_1m(sym):
-    d, pr, v = L.load_days(f'results_v2/panels/{sym}1m_main1015.csv')
-    f = pd.read_csv(f'calibration/fits_{sym}.csv').set_index('date')
-    ft = [(f.loc[x, 'eta'], f.loc[x, 'eps'], f.loc[x, 'rho']) for x in d]
+    d, pr, v = L.load_days(f'results_v2/panels/his_{sym}1m.csv')
+    ft = L.load_fits(sym, d)
     out = {'dates': np.array(d), 'avg_v': np.mean(np.concatenate(v))}
     for s in [1, 5, 10, 15, 20, 30, 60]:
         t, pn = H.run_all(pr, v, s, steps_daily = 380, fits = ft)
@@ -215,6 +237,68 @@ def run_1m(sym):
             for g in settings.GREEKS:
                 out[g] = np.array(t[g])
     np.savez(f'results_v2/runs/his_1m_{sym}.npz', **out)
+
+
+def run_1m_market(sym):
+    import build_panels as B
+
+    path = f'results_v2/panels/his_{sym}1m.csv'
+    dates, prices, variances = L.load_days(path)
+    panel = pd.read_csv(path, index_col = 0)
+    strikes = panel.groupby(pd.to_datetime(panel.index).strftime('%Y-%m-%d'))['strike'].first()
+    fits = L.load_fits(sym, dates)
+    strides = [1, 5, 10, 15, 20, 30, 60]
+    out = {'dates': np.array(dates), 'avg_v': np.mean(np.concatenate(variances))}
+    out.update({f'pnl_{s}': np.zeros(len(dates)) for s in strides})
+    skipped = []
+    saved = (settings.KAPPA, settings.ETA, settings.EPSILON, settings.RHO,
+             settings.ONE_DAY, settings.TAU_OFF)
+    try:
+        for day, (d, S, v) in enumerate(zip(dates, prices, variances)):
+            strike = strikes.loc[d]
+            Ks, g = B.load_day(B.day_path(sym, d))
+            _, _, mids = B.carry(g['C_bid'], g['C_ask'], g['C_mid'])
+            col = []
+            for k in range(len(Ks)):
+                if Ks[k] == strike:
+                    col.append(k)
+            if len(col) != 1:
+                raise ValueError(f'{sym} {d}: STRIKE {strike} MISSING')
+            V = mids[:len(S), col[0]].copy()
+            good = np.isfinite(V)
+            if len(V) != len(S):
+                raise ValueError(f'{sym} {d}: LENGTH ERROR ({len(V)} vs {len(S)})')
+            if not good.any():
+                print(f'{sym} {d}: skipping day with no market mids at strike {strike}')
+                skipped.append(d)
+                continue
+            bars = np.arange(len(V))
+            V = np.interp(bars, bars[good], V[good]) / strike
+
+            settings.ETA, settings.EPSILON, settings.RHO = fits[day]
+            last = len(S) - 1
+            delta = np.array([H.delta_of(S[a], v[a],
+                              settings.ONE_DAY * (last - a) / 380 + settings.TAU_OFF)
+                              for a in range(last)])
+            for s in strides:
+                bars = list(range(0, last + 1, s))
+                if bars[-1] != last:
+                    bars.append(last)
+                pnl = 0.0
+                for a, b in zip(bars[:-1], bars[1:]):
+                    dt = settings.ONE_DAY * (b - a) / 380
+                    dS = S[b] - S[a]
+                    pnl += V[b] - V[a] - delta[a] * dS - settings.R * (V[a] - delta[a] * S[a]) * dt
+                out[f'pnl_{s}'][day] = pnl
+    finally:
+        (settings.KAPPA, settings.ETA, settings.EPSILON, settings.RHO,
+         settings.ONE_DAY, settings.TAU_OFF) = saved
+    keep = ~np.isin(out['dates'], skipped)
+    out['dates'] = out['dates'][keep]
+    for s in strides:
+        out[f'pnl_{s}'] = out[f'pnl_{s}'][keep]
+    out['skipped'] = np.array(skipped, dtype = out['dates'].dtype)
+    np.savez(f'results_v2/runs/his_1m_mkt_{sym}.npz', **out)
 
 
 def table_floor4():
@@ -233,10 +317,46 @@ def table_floor4():
             print(s, m.sum(), np.round(err, 2), round(a, 2), round(b, 3), round(r2, 4), round(100 * a / err[0]))
 
 
+def table_floorrobust():
+    syms = ['spy', 'spx', 'qqq', 'ndx']
+    mins = np.array([1, 5, 10, 15, 20, 30, 60])
+    Z, M = {}, {}
+    for s in syms:
+        with np.load(f'results_v2/runs/his_1m_{s}.npz') as z:
+            Z[s] = {k: z[k] for k in ['dates'] + [f'pnl_{m}' for m in mins]}
+        with np.load(f'results_v2/runs/his_1m_mkt_{s}.npz') as z:
+            M[s] = {k: z[k] for k in ['dates'] + [f'pnl_{m}' for m in mins]}
+    shared = sorted(set.intersection(*[set(Z[s]['dates']) for s in syms]))
+    print(len(shared), 'shared days')
+    print('symbol / floor % / block 95% CI % / gamma / free floor % / market floor %')
+    for s in syms:
+        idx = {d: i for i, d in enumerate(Z[s]['dates'])}
+        midx = {d: i for i, d in enumerate(M[s]['dates'])}
+        rows = [idx[d] for d in shared]
+        mrows = [midx[d] for d in shared]
+        pnl = np.column_stack([Z[s][f'pnl_{m}'][rows] for m in mins])
+        err = 1e4 * np.mean(np.abs(pnl), axis = 0)
+        a, _, _ = SM.fit_floor(mins, err)
+        ci = SM.block_bootstrap_floor(mins, pnl, 10000, 10, 7)
+
+        best = None
+        for gamma in np.arange(50, 1501) / 1000:
+            X = np.column_stack([np.ones(len(mins)), mins ** gamma])
+            fit = np.linalg.lstsq(X, err, rcond = None)
+            coef = fit[0]
+            sse = np.sum((err - X @ coef) ** 2)
+            if best is None or sse < best[0]:
+                best = (sse, gamma, coef[0])
+        _, gamma, free_a = best
+        merr = np.array([1e4 * np.mean(np.abs(M[s][f'pnl_{m}'][mrows])) for m in mins])
+        market_a, _, _ = SM.fit_floor(mins, merr)
+        print(f'{s.upper()} / {100 * a / err[0]:.1f} / [{ci[0]:.1f}, {ci[1]:.1f}] / '
+              f'{gamma:.2f} / {100 * free_a / err[0]:.1f} / {100 * market_a / merr[0]:.1f}')
+
+
 def run_ticks(sym, strides = (1, 3, 6, 30, 360)):
     d, pr, v = L.load_days(f'results_v2/runs/ticks360/panels/{sym}_tick10.csv')
-    f = pd.read_csv(f'calibration/fits_{sym}.csv').set_index('date')
-    ft = [(f.loc[x, 'eta'], f.loc[x, 'eps'], f.loc[x, 'rho']) for x in d]
+    ft = L.load_fits(sym, d)
     for s in strides:
         t, pn = H.run_all(pr, v, s, steps_daily = 2280, fits = ft)
         np.save(f'results_v2/runs/his_ticks_{sym}_{s}.npy', np.array(pn))
@@ -258,115 +378,122 @@ def table_ticks4():
 
 
 def table_vegasplit(sym, com = None):
-    saved = (settings.KAPPA, settings.ETA, settings.EPSILON, settings.RHO)
-    if com is None:
-        com = set.intersection(*[set(L.load_days(f'results_v2/panels/{s}1m_main1015.csv')[0]) for s in ['spy', 'spx', 'qqq', 'ndx']])
-    d, pr, v = L.load_days(f'results_v2/panels/{sym}5m_main1015.csv')
-    f = pd.read_csv(f'calibration/fits_{sym}.csv').set_index('date')
-    sel = [i for i, x in enumerate(d) if x in com]
-    full = np.array([len(v[i]) == 77 for i in sel])
-    dV = np.zeros((len(sel), 76))
-    for j, i in enumerate(sel):
-        if full[j]:
-            dV[j] = np.diff(v[i])
-    csum = np.cumsum(dV, axis = 0)
-    ccnt = np.cumsum(full)
-    T = {g: [] for g in settings.GREEKS}
-    pnl, drift, surprise = [], [], []
-    for j in range(60, len(sel)):
-        i = sel[j]
-        curve = csum[j - 1] / ccnt[j - 1]
-        settings.ETA, settings.EPSILON, settings.RHO = f.loc[d[i], 'eta'], f.loc[d[i], 'eps'], f.loc[d[i], 'rho']
-        S, vv = pr[i], v[i]
-        last = len(S) - 1
-        off = 0 if last == 76 else 36
-        day = {g: 0.0 for g in settings.GREEKS}
-        p = dr = su = 0.0
-        for b in range(last):
-            tau = settings.ONE_DAY * (last - b) / 76 + settings.TAU_OFF
-            dt = settings.ONE_DAY / 76
-            t, pn = H.one_step(S[b], vv[b], S[b+1], vv[b+1], tau, dt)
-            vg = H.sv_greeks(S[b], vv[b], tau)['vega']
-            E = curve[b + off]
-            nudt = settings.KAPPA * (settings.ETA - vv[b]) * dt
-            su += vg * (vv[b+1] - vv[b] - E)
-            dr += vg * (E - nudt)
-            p += pn
-            for g in settings.GREEKS:
-                day[g] += t[g]
-        for g in settings.GREEKS:
-            T[g].append(day[g])
-        pnl.append(p)
-        drift.append(dr)
-        surprise.append(su)
-    pnl, drift, surprise = np.array(pnl), np.array(drift), np.array(surprise)
-    share = lambda x, y: 100 * np.cov(x, y, bias = True)[0, 1] / np.var(y)
-    rng = np.random.default_rng(12345)
-    n = len(pnl)
-    bs = {'surprise': [], 'drift': []}
-    for r in range(10000):
-        idx = rng.integers(0, n, n)
-        bs['surprise'].append(share(surprise[idx], pnl[idx]))
-        bs['drift'].append(share(drift[idx], pnl[idx]))
-    for name, x in [('vega', np.array(T['vega'])), ('drift', drift), ('surprise', surprise)]:
-        m, tt, neg = SM.mean_stats(x)
-        print(sym, name, n, round(m, 2), round(tt, 1), round(share(x, pnl), 1),
-              np.percentile(bs[name], [2.5, 97.5]).round(1) if name in bs else '')
-    settings.KAPPA, settings.ETA, settings.EPSILON, settings.RHO = saved
-
-
-def table_volhedge(sym):
-    saved = (settings.KAPPA, settings.ETA, settings.EPSILON, settings.RHO)
-    d, pr, var = L.load_days(f'results_v2/panels/{sym}5m_main1015.csv')
-    f = pd.read_csv(f'calibration/fits_{sym}.csv').set_index('date')
-    ft = [(f.loc[x, 'eta'], f.loc[x, 'eps'], f.loc[x, 'rho']) for x in d]
-    rows = [('delta only', None), ('0.25% OTM', 1.0025), ('0.5% OTM', 1.005), ('1% OTM', 1.01)]
-    base = None
-    for name, kh in rows:
-        book = np.zeros(len(pr))
-        gamma = np.zeros(len(pr))
-        capped = 0
-        no_vega = 0
-        bars_total = 0
-        n_total = 0
-        traded = 0
-        for day in range(len(pr)):
-            settings.ETA, settings.EPSILON, settings.RHO = ft[day]
-            S, v = pr[day], var[day]
+    saved = (settings.KAPPA, settings.ETA, settings.EPSILON, settings.RHO,
+             settings.ONE_DAY, settings.TAU_OFF)
+    try:
+        if com is None:
+            com = set.intersection(*[set(L.load_days(f'results_v2/panels/his_{s}1m.csv')[0]) for s in ['spy', 'spx', 'qqq', 'ndx']])
+        d, pr, v = L.load_days(f'results_v2/panels/his_{sym}5m.csv')
+        ft = L.load_fits(sym, d)
+        sel = [i for i, x in enumerate(d) if x in com]
+        full = np.array([len(v[i]) == 77 for i in sel])
+        dV = np.zeros((len(sel), 76))
+        for j, i in enumerate(sel):
+            if full[j]:
+                dV[j] = np.diff(v[i])
+        csum = np.cumsum(dV, axis = 0)
+        ccnt = np.cumsum(full)
+        T = {g: [] for g in settings.GREEKS}
+        pnl, drift, surprise = [], [], []
+        for j in range(60, len(sel)):
+            i = sel[j]
+            curve = csum[j - 1] / ccnt[j - 1]
+            settings.ETA, settings.EPSILON, settings.RHO = ft[i]
+            S, vv = pr[i], v[i]
             last = len(S) - 1
-            n_prev = 0
+            off = 0 if last == 76 else 36
+            day = {g: 0.0 for g in settings.GREEKS}
+            p = dr = su = 0.0
             for b in range(last):
                 tau = settings.ONE_DAY * (last - b) / 76 + settings.TAU_OFF
                 dt = settings.ONE_DAY / 76
-                t, p = H.one_step(S[b], v[b], S[b+1], v[b+1], tau, dt)
-                bars_total += 1
-                if kh is None:
-                    book[day] += p
-                    gamma[day] += t['gamma']
-                    continue
-                vT = H.sv_greeks(S[b], v[b], tau)['vega']
-                th, ph = H.one_step(S[b] / kh, v[b], S[b+1] / kh, v[b+1], tau, dt)
-                vH = kh * H.sv_greeks(S[b] / kh, v[b], tau)['vega']
-                if vH <= 1e-12:
-                    n = 0
-                    no_vega += 1
-                else:
-                    n = -vT / vH
-                    if abs(n) >= 25:
-                        n = np.sign(n) * 25
-                        capped += 1
-                book[day] += p + n * kh * ph
-                gamma[day] += t['gamma'] + n * kh * th['gamma']
-                n_total += n
-                traded += abs(n - n_prev)
-                n_prev = n
-        if base is None:
-            base, gamma_base = book, gamma
-        m, tt, neg = SM.mean_stats(book)
-        print(sym, name, round(1e4 * np.mean(np.abs(book)), 2), round(1e4 * np.std(book, ddof = 1), 2), round(m, 2), round(tt, 2),
-              round(100 * (np.var(book) / np.var(base) - 1), 1), round(100 * capped / bars_total, 1), round(-n_total / bars_total, 1),
-              round(100 * np.var(gamma) / np.var(gamma_base), 1), round(traded / len(pr), 1), round(100 * no_vega / bars_total, 2))
-    settings.KAPPA, settings.ETA, settings.EPSILON, settings.RHO = saved
+                t, pn = H.one_step(S[b], vv[b], S[b+1], vv[b+1], tau, dt)
+                vg = H.sv_greeks(S[b], vv[b], tau)['vega']
+                E = curve[b + off]
+                nudt = settings.KAPPA * (settings.ETA - vv[b]) * dt
+                su += vg * (vv[b+1] - vv[b] - E)
+                dr += vg * (E - nudt)
+                p += pn
+                for g in settings.GREEKS:
+                    day[g] += t[g]
+            for g in settings.GREEKS:
+                T[g].append(day[g])
+            pnl.append(p)
+            drift.append(dr)
+            surprise.append(su)
+        pnl, drift, surprise = np.array(pnl), np.array(drift), np.array(surprise)
+        share = lambda x, y: 100 * np.cov(x, y, bias = True)[0, 1] / np.var(y)
+        rng = np.random.default_rng(12345)
+        n = len(pnl)
+        bs = {'surprise': [], 'drift': []}
+        for r in range(10000):
+            idx = rng.integers(0, n, n)
+            bs['surprise'].append(share(surprise[idx], pnl[idx]))
+            bs['drift'].append(share(drift[idx], pnl[idx]))
+        for name, x in [('vega', np.array(T['vega'])), ('drift', drift), ('surprise', surprise)]:
+            m, tt, neg = SM.mean_stats(x)
+            print(sym, name, n, round(m, 2), round(tt, 1), round(share(x, pnl), 1),
+                  np.percentile(bs[name], [2.5, 97.5]).round(1) if name in bs else '')
+    finally:
+        (settings.KAPPA, settings.ETA, settings.EPSILON, settings.RHO,
+         settings.ONE_DAY, settings.TAU_OFF) = saved
+
+
+def table_volhedge(sym):
+    saved = (settings.KAPPA, settings.ETA, settings.EPSILON, settings.RHO,
+             settings.ONE_DAY, settings.TAU_OFF)
+    try:
+        d, pr, var = L.load_days(f'results_v2/panels/his_{sym}5m.csv')
+        ft = L.load_fits(sym, d)
+        rows = [('delta only', None), ('0.25% OTM', 1.0025), ('0.5% OTM', 1.005), ('1% OTM', 1.01)]
+        base = None
+        for name, kh in rows:
+            book = np.zeros(len(pr))
+            gamma = np.zeros(len(pr))
+            capped = 0
+            no_vega = 0
+            bars_total = 0
+            n_total = 0
+            traded = 0
+            for day in range(len(pr)):
+                settings.ETA, settings.EPSILON, settings.RHO = ft[day]
+                S, v = pr[day], var[day]
+                last = len(S) - 1
+                n_prev = 0
+                for b in range(last):
+                    tau = settings.ONE_DAY * (last - b) / 76 + settings.TAU_OFF
+                    dt = settings.ONE_DAY / 76
+                    t, p = H.one_step(S[b], v[b], S[b+1], v[b+1], tau, dt)
+                    bars_total += 1
+                    if kh is None:
+                        book[day] += p
+                        gamma[day] += t['gamma']
+                        continue
+                    vT = H.sv_greeks(S[b], v[b], tau)['vega']
+                    th, ph = H.one_step(S[b] / kh, v[b], S[b+1] / kh, v[b+1], tau, dt)
+                    vH = kh * H.sv_greeks(S[b] / kh, v[b], tau)['vega']
+                    if vH <= 1e-12:
+                        n = 0
+                        no_vega += 1
+                    else:
+                        n = -vT / vH
+                        if abs(n) >= 25:
+                            n = np.sign(n) * 25
+                            capped += 1
+                    book[day] += p + n * kh * ph
+                    gamma[day] += t['gamma'] + n * kh * th['gamma']
+                    n_total += n
+                    traded += abs(n - n_prev)
+                    n_prev = n
+            if base is None:
+                base, gamma_base = book, gamma
+            m, tt, neg = SM.mean_stats(book)
+            print(sym, name, round(1e4 * np.mean(np.abs(book)), 2), round(1e4 * np.std(book, ddof = 1), 2), round(m, 2), round(tt, 2),
+                  round(100 * (np.var(book) / np.var(base) - 1), 1), round(100 * capped / bars_total, 1), round(-n_total / bars_total, 1),
+                  round(100 * np.var(gamma) / np.var(gamma_base), 1), round(traded / len(pr), 1), round(100 * no_vega / bars_total, 2))
+    finally:
+        (settings.KAPPA, settings.ETA, settings.EPSILON, settings.RHO,
+         settings.ONE_DAY, settings.TAU_OFF) = saved
 
 
 def table_staleness():
@@ -383,16 +510,16 @@ def table_staleness():
 
 def table_stale(sym):
     rules = ['clock0', 'clock1', 'clock2', 'clock5', 'clock15', 'asof', 'arrival95', 'move1', 'move2', 'move3']
-    f = pd.read_csv(f'calibration/fits_{sym}.csv').set_index('date')
     for rule in rules:
         d, pr, v = L.load_days(f'results_v2/panels/stale_main1015/panel_{sym}_{rule}.csv')
-        ft = [(f.loc[x, 'eta'], f.loc[x, 'eps'], f.loc[x, 'rho']) for x in d]
+        ft = L.load_fits(sym, d)
         t, pn = H.run_all(pr, v, 1, fits = ft)
         vs = SM.variance_shares(t, pn)
         print(sym, rule, len(d), round(vs['gamma'], 2), round(vs['vega'], 2), round(SM.residual_pct(t, pn), 2))
 
 
 def table_fill():
+    load_main()
     p0 = np.array(pnls)
     T0 = {g: np.array(totals[g]) for g in settings.GREEKS}
     def row(name, T, p):
@@ -427,6 +554,7 @@ def table_fill():
 
 
 def text_numbers():
+    load_main()
     years = np.array([d[:4] for d in dates])
     p = np.array(pnls)
     groups = {}
@@ -464,31 +592,35 @@ def text_numbers():
 
 
 def validation_sim():
-    saved = (settings.KAPPA, settings.ETA, settings.EPSILON, settings.RHO)
-    settings.KAPPA, settings.ETA, settings.EPSILON, settings.RHO = 3.0, 0.04, 1.0, -0.7
-    D = settings.ONE_DAY
-    S_path, v_path = H.euler_maruyamaFT(41, 0.04, 200, 0, 8, 40 * D)
-    pnl_sum = np.zeros(200)
-    explained = np.zeros(200)
-    for d in range(200):
-        S = S_path[d] / S_path[d][0]
-        v = np.clip(v_path[d], 1e-8, None)
-        for i in range(40):
-            t, pn = H.one_step(S[i], v[i], S[i+1], v[i+1], 60 * D - i * D, D)
-            explained[d] += sum(t.values())
-            pnl_sum[d] += pn
-    print('algebra control resid %', 100 * np.mean(np.abs(pnl_sum - explained)) / np.mean(np.abs(pnl_sum)))
-    S_path, v_path = H.euler_maruyamaFT(79, 0.04, 200, 0, 8, D)
-    prices_sim = [S_path[i] for i in range(200)]
-    variances_sim = [np.clip(v_path[i], 1e-8, None) for i in range(200)]
-    dts = []
-    sizes = []
-    for s in [1, 2, 3, 6, 13, 26, 39]:
-        t, pn = H.run_all(prices_sim, variances_sim, s, steps_daily = 78)
-        dts.append(D * s / 78)
-        sizes.append(np.mean(np.abs(t["gamma"])))
-    print('gamma slope', np.polyfit(np.log(dts), np.log(sizes), 1)[0])
-    settings.KAPPA, settings.ETA, settings.EPSILON, settings.RHO = saved
+    saved = (settings.KAPPA, settings.ETA, settings.EPSILON, settings.RHO,
+             settings.ONE_DAY, settings.TAU_OFF)
+    try:
+        settings.KAPPA, settings.ETA, settings.EPSILON, settings.RHO = 3.0, 0.04, 1.0, -0.7
+        D = settings.ONE_DAY
+        S_path, v_path = H.euler_maruyamaFT(41, 0.04, 200, 0, 8, 40 * D)
+        pnl_sum = np.zeros(200)
+        explained = np.zeros(200)
+        for d in range(200):
+            S = S_path[d] / S_path[d][0]
+            v = np.clip(v_path[d], 1e-8, None)
+            for i in range(40):
+                t, pn = H.one_step(S[i], v[i], S[i+1], v[i+1], 60 * D - i * D, D)
+                explained[d] += sum(t.values())
+                pnl_sum[d] += pn
+        print('algebra control resid %', 100 * np.mean(np.abs(pnl_sum - explained)) / np.mean(np.abs(pnl_sum)))
+        S_path, v_path = H.euler_maruyamaFT(79, 0.04, 200, 0, 8, D)
+        prices_sim = [S_path[i] for i in range(200)]
+        variances_sim = [np.clip(v_path[i], 1e-8, None) for i in range(200)]
+        dts = []
+        sizes = []
+        for s in [1, 2, 3, 6, 13, 26, 39]:
+            t, pn = H.run_all(prices_sim, variances_sim, s, steps_daily = 78)
+            dts.append(D * s / 78)
+            sizes.append(np.mean(np.abs(t["gamma"])))
+        print('gamma slope', np.polyfit(np.log(dts), np.log(sizes), 1)[0])
+    finally:
+        (settings.KAPPA, settings.ETA, settings.EPSILON, settings.RHO,
+         settings.ONE_DAY, settings.TAU_OFF) = saved
 
 
 if __name__ == '__main__':

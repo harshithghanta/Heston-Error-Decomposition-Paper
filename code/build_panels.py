@@ -313,4 +313,4 @@ def spy_half_day(day):
 
 if __name__ == '__main__':
     sym, step = sys.argv[1], int(sys.argv[2])
-    build_panel(sym, step, f'results_v2/panels/{sym}{step}m_main1015.csv')
+    build_panel(sym, step, f'results_v2/panels/his_{sym}{step}m.csv')

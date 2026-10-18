@@ -177,9 +177,27 @@ def bipower_test(S):
 def fit_floor(dt, err):
     err = np.array(err)
     X = np.column_stack([np.ones(len(dt)), np.sqrt(dt)])
-    (a, b), *_ = np.linalg.lstsq(X, err, rcond = None)
+    fit = np.linalg.lstsq(X, err, rcond = None)
+    coef = fit[0]
+    a = coef[0]
+    b = coef[1]
     r2 = 1 - sum((err - X @ [a, b])**2) / sum((err - err.mean())**2)
     return a, b, r2
+
+
+def block_bootstrap_floor(dt, pnls, reps = 10000, block = 10, seed = 7):
+    errors = np.abs(np.asarray(pnls)) * 1e4
+    rng = np.random.default_rng(seed)
+    n = len(errors)
+    draws = []
+    for r in range(reps):
+        nb = math.ceil(n / block)
+        starts = rng.integers(0, n - block + 1, nb)
+        idx = (starts[:, None] + np.arange(block)).ravel()[:n]
+        err = errors[idx].mean(axis = 0)
+        a, _, _ = fit_floor(dt, err)
+        draws.append(100 * a / err[0])
+    return np.percentile(draws, [2.5, 97.5])
 
 
 def tick_ratio(pnl_fine, pnl_coarse, reps, seed):

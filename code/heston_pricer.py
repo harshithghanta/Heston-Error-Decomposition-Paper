@@ -130,9 +130,8 @@ def one_step(S0, v0, S1, v1, tau, dt, speed_out = False):
 def run_all(prices, variances, stride, close_early = 0, steps_daily = 76, fits = None):
     totals = {'gamma': [], 'volga': [], 'vanna': [], 'vega': [], 'charm': [], 'veta': [], 'tconv': []}
     PNL = []
-    saved_eta = settings.ETA
-    saved_eps = settings.EPSILON
-    saved_rho = settings.RHO
+    saved = (settings.KAPPA, settings.ETA, settings.EPSILON, settings.RHO,
+             settings.ONE_DAY, settings.TAU_OFF)
     try:
         for day in range(len(prices)):
             if fits is not None:
@@ -164,9 +163,8 @@ def run_all(prices, variances, stride, close_early = 0, steps_daily = 76, fits =
                 totals[l].append(day_total[l])
             PNL.append(day_pnl)
     finally:
-        settings.ETA = saved_eta
-        settings.EPSILON = saved_eps
-        settings.RHO = saved_rho
+        (settings.KAPPA, settings.ETA, settings.EPSILON, settings.RHO,
+         settings.ONE_DAY, settings.TAU_OFF) = saved
     return totals, PNL
 
 

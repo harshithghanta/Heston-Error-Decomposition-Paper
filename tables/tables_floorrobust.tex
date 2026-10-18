@@ -1,0 +1,18 @@
+\begin{table}[tbp]
+\centering
+\small
+\begin{tabular}{lccccc}
+\toprule
+ & \multicolumn{2}{c}{$a + b\sqrt{\Delta t}$, Heston marks} & \multicolumn{2}{c}{$a + b\,\Delta t^{\gamma}$, Heston marks} & $a + b\sqrt{\Delta t}$, market prices \\
+\cmidrule(lr){2-3}\cmidrule(lr){4-5}\cmidrule(lr){6-6}
+ & Floor (\%) & 95\% CI, block (\%) & $\gamma$ & Floor (\%) & Floor (\%) \\
+\midrule
+SPY & $85.9$ & $[81.5,\ 90.1]$ & $0.57$ & $90.9$ & $85.1$ \\
+SPX & $84.6$ & $[79.8,\ 89.2]$ & $0.56$ & $89.3$ & $83.6$ \\
+QQQ & $82.4$ & $[77.9,\ 86.2]$ & $0.60$ & $90.2$ & $81.8$ \\
+NDX & $81.0$ & $[76.0,\ 85.3]$ & $0.58$ & $88.2$ & $80.5$ \\
+\bottomrule
+\end{tabular}
+\caption{Floor $a$ as a share of the one-minute error, 900 shared days.}
+\label{tab:floorrobust}
+\end{table}

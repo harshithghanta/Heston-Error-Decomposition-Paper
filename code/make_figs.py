@@ -22,28 +22,40 @@ INK = '#1a1a1a'
 CMAP = LinearSegmentedColormap.from_list('persp', ['#58c95c', '#62d18a', '#5cc9c4', '#4a9be6', '#3d63e0'])
 
 
-dates, prices, variances = L.load_days('results_v2/panels/spy5m_main1015.csv')
-f = pd.read_csv('calibration/fits_spy.csv').set_index('date')
-fits = []
-for d in dates:
-    fits.append((f.loc[d, 'eta'], f.loc[d, 'eps'], f.loc[d, 'rho']))
+dates = prices = variances = fits = None
+
+
+def load_main():
+    global dates, prices, variances, fits
+    if dates is None:
+        d, pr, v = L.load_days('results_v2/panels/his_spy5m.csv')
+        ft = L.load_fits('spy', d)
+        dates, prices, variances, fits = d, pr, v, ft
+    return dates, prices, variances, fits
 
 
 def day_bars(S, v, fit):
-    settings.ETA, settings.EPSILON, settings.RHO = fit
-    last = len(S) - 1
-    all_terms = []
-    pnls = []
-    for b in range(last):
-        tau = settings.ONE_DAY * (last - b) / 76 + settings.TAU_OFF
-        dt = settings.ONE_DAY / 76
-        terms, pnl = H.one_step(S[b], v[b], S[b+1], v[b+1], tau, dt)
-        all_terms.append(terms)
-        pnls.append(pnl)
+    saved = (settings.KAPPA, settings.ETA, settings.EPSILON, settings.RHO,
+             settings.ONE_DAY, settings.TAU_OFF)
+    try:
+        settings.ETA, settings.EPSILON, settings.RHO = fit
+        last = len(S) - 1
+        all_terms = []
+        pnls = []
+        for b in range(last):
+            tau = settings.ONE_DAY * (last - b) / 76 + settings.TAU_OFF
+            dt = settings.ONE_DAY / 76
+            terms, pnl = H.one_step(S[b], v[b], S[b+1], v[b+1], tau, dt)
+            all_terms.append(terms)
+            pnls.append(pnl)
+    finally:
+        (settings.KAPPA, settings.ETA, settings.EPSILON, settings.RHO,
+         settings.ONE_DAY, settings.TAU_OFF) = saved
     return all_terms, pnls
 
 
 def fig_example_day():
+    load_main()
     i = dates.index('2024-08-28')
     all_terms, pnls = day_bars(prices[i], variances[i], fits[i])
     print(i, len(pnls))
@@ -71,6 +83,7 @@ def fig_example_day():
 
 
 def fig_shares_tod():
+    load_main()
     size = np.zeros((76, 7))
     for i in range(len(dates)):
         if len(prices[i]) != 77:
@@ -102,13 +115,13 @@ SYMS = ['spy', 'spx', 'qqq', 'ndx']
 def shared_dates():
     sets = []
     for s in SYMS:
-        d, p, v = L.load_days(f'results_v2/panels/{s}1m_main1015.csv')
+        d, p, v = L.load_days(f'results_v2/panels/his_{s}1m.csv')
         sets.append(set(d))
     return set.intersection(*sets)
 
 
 def past_only_curves(sym, com):
-    d5, p5, v5 = L.load_days(f'results_v2/panels/{sym}5m_main1015.csv')
+    d5, p5, v5 = L.load_days(f'results_v2/panels/his_{sym}5m.csv')
     sel = [i for i, d in enumerate(d5) if d in com]
     full = np.array([len(v5[i]) == 77 for i in sel])
     dV = np.zeros((len(sel), 76))
