@@ -44,6 +44,7 @@ A secondary instrument is required to hedge, and hedgers cannot rely on rote fas
 | `tables_fill.tex` | Results when the two refilled days are changed or dropped |
 | `tables_params.tex` | Main run against fixed Heston settings |
 | `tables_volhedge.tex` | Hedging Vega with a second option |
+| `tables_floorrobust.tex` | Error-floor robustness: block bootstrap, free exponent, market marks |
 
 **`code/`**
 | File | What it does |
@@ -72,11 +73,16 @@ A secondary instrument is required to hedge, and hedgers cannot rely on rote fas
 | File | What it is |
 |---|---|
 | `README.md` | This file |
+| `requirements.txt` | Python packages, pinned to the versions used for the paper |
 | `LICENSE` | MIT license |
 | `.gitignore` | Keeps the data and other local files out of the repository |
 
 ## Requirements
-Python 3, numpy, pandas, matplotlib, scipy, pyarrow (reads the quote files), requests (the puller)
+Python 3.14 with the pinned packages in `requirements.txt` (numpy, pandas, scipy, matplotlib, pyarrow for the quote files, requests for the puller):
+```bash
+python -m venv venv
+venv/bin/pip install -r requirements.txt
+```
 
 ## Data
 The option quotes come from Massive.com. The hedged P&L marked at market quotes is correlated with the P&L marked at model prices (r = 0.989). The date range for all the option quotes is 2022-06-08 to 2026-08-25. The data itself (about 300 GB) is not included; `puller/` downloads it with your own Massive.com key, set as `MASSIVE_API_KEY` in your environment or a `.env` file:
@@ -99,17 +105,55 @@ A panel is one CSV per product and hedging grid, with one row per hedge time:
 A full day has 77 rows on the 5-minute grid (381 on the 1-minute grid); a half-day has 41 (201). The name `vix1d_close` is left over from an earlier version.
 
 ## Reproducing the results
-Run from the repository root, in this order:
-```bash
-python -m puller.bigpull --start 2022-06-08 --end 2026-08-25   # 1. download (see Data)
-python code/build_panels.py spy 5                              # 2. panels: spy/spx/qqq/ndx, 5 or 1 minute
-python code/calibration.py spy                                 # 3. daily fits: also spx, qqq, ndx
-python code/make_tables.py table_drifts                        # 4. tables: any function below, e.g. table_stale spy
-python code/make_figs.py                                       # 5. figures
-```
-`build_panels.py` writes `results_v2/panels/<sym><step>m_main1015.csv`, the files the analysis reads. The one-minute block of the hedging-interval table uses a separate SPY panel built on the observed SPY price (`spy1m452_main1015.csv`), which this script does not build.
+Run everything from the repository root, in this order.
 
-Each table is one function, run by name with its inputs after it (for example `python code/make_tables.py table_summary4 spx`).
+**0. Output folders.** The scripts do not create them:
+```bash
+mkdir -p results_v2/panels results_v2/runs calibration
+```
+
+**1. Download** the quotes (see Data). Two stress days, 2025-04-08 and 2025-04-09, were downloaded a second time with a wider strike range (strikes within ±15% of the forward), because the normal pull missed far strikes those afternoons. They sit in `data_repull_wide/<root>/<day>/bars.parquet`, laid out like `data/`. `build_panels.py` reads those two days only from there and skips them without a warning if the files are missing. The wider pull was a one-off script that is not in this repository.
+
+**2. Panels**, for each product (`spy`, `spx`, `qqq`, `ndx`) and grid (`5` or `1` minutes):
+```bash
+python code/build_panels.py spy 5      # writes results_v2/panels/his_spy5m.csv
+```
+
+**3. Daily fits** of ε and ρ, for each product (reads the 5-minute panel):
+```bash
+python code/calibration.py spy         # writes calibration/fits_spy.csv
+```
+
+**4. Runs and tables.** Each table is one function, run by name with its inputs after it:
+```bash
+python code/make_tables.py table_drifts
+python code/make_tables.py table_summary4 spx
+```
+Some functions save their results and later functions read them back:
+
+| Saved file | Made by | Read by |
+|---|---|---|
+| `results_v2/runs/his_main_run.npz` | the first table that needs the main SPY run | every main-run table |
+| `results_v2/runs/his_1m_<sym>.npz` | `run_1m <sym>` | `table_xsec4`, `table_floor4`, `table_floorrobust`, `table_ticks4` |
+| `results_v2/runs/his_1m_mkt_<sym>.npz` | `run_1m_market <sym>` | `table_floorrobust` |
+| `results_v2/runs/his_ticks_<sym>_<k>.npy` | `run_ticks <sym>` | `table_ticks4` |
+
+These saved files are not checked against the panels, fits or settings. **Delete them after changing any input**, or the tables will reuse the old results.
+
+**5. Figures:**
+```bash
+python code/make_figs.py
+```
+
+**Inputs this repository does not build.** These were made by one-off scripts during the project and are needed only by the tables listed:
+
+| File | Needed by |
+|---|---|
+| `data_repull_wide/` | `build_panels.py` (2025-04-08 and 2025-04-09) |
+| `results_v2/runs/ticks360/panels/<sym>_tick10.csv` | `run_ticks` |
+| `results_v2/runs/ticks360/stale_<sym>.csv` | `table_staleness` |
+| `results_v2/panels/stale_main1015/panel_<sym>_<rule>.csv` | `table_stale` |
+| `results_v2/runs/v2_calib/market_pnl.csv` | `text_numbers` (the market-marked numbers) |
 
 | Paper table | Function in `make_tables.py` |
 |---|---|
@@ -120,14 +164,15 @@ Each table is one function, run by name with its inputs after it (for example `p
 | Speed term | `table_thirdorder` |
 | End-of-day convention | `table_clock` |
 | Parameter settings | `table_params` |
-| Four products, full samples | `table_summary4` |
-| Four products, shared days | `run_1m`, then `table_xsec4` |
-| Error floor | `run_1m`, then `table_floor4` |
-| Tick test | `run_ticks`, then `table_ticks4` |
-| Vega drift and surprise | `table_vegasplit` |
-| Volatility hedge | `table_volhedge` |
+| Four products, full samples | `table_summary4 <sym>` |
+| Four products, shared days | `run_1m <sym>` for all four, then `table_xsec4` |
+| Error floor | `run_1m <sym>` for all four, then `table_floor4` |
+| Error-floor robustness | `run_1m <sym>` and `run_1m_market <sym>` for all four, then `table_floorrobust` |
+| Tick test | `run_ticks <sym>`, then `table_ticks4` |
+| Vega drift and surprise | `table_vegasplit <sym>` |
+| Volatility hedge | `table_volhedge <sym>` |
 | Quote staleness | `table_staleness` |
-| Stale-quote rules | `table_stale` |
+| Stale-quote rules | `table_stale <sym>` |
 | Filled marks | `table_fill` |
 | Numbers quoted in the text | `text_numbers` |
 | Simulation checks | `validation_sim` |

@@ -15,3 +15,4 @@
 !puller/
 !puller/*.py
 !README.md
+!requirements.txt
